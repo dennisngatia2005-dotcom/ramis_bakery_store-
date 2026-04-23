@@ -1,7 +1,7 @@
-import Production from './pages/Production';
+import Transport from "./pages/Transport";
 
 function App() {
-  return <Production />;
+  return <Transport />;
 }
 
 export default App;

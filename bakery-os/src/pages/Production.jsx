@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { logProduction } from '../services/productionService';
-
+const defaultuserID = '18eb419f-0427-4fbc-9f48-ab0eee711e1f';
 export default function Production() {
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState('');
@@ -18,22 +18,27 @@ export default function Production() {
   }, []);
 
   async function handleSubmit(e) {
-    e.preventDefault();
+  e.preventDefault();
 
-    try {
-      await logProduction({
-        product_id: selectedProduct,
-        user_id: null, // we’ll fix auth later
-        mixes_made: Number(mixes),
-      });
-
-      alert('Production logged!');
-      setMixes(0);
-    } catch (err) {
-      console.error(err);
-      alert('Error logging production');
-    }
+  if (!selectedProduct || mixes <= 0) {
+    alert("Select product and enter valid mixes");
+    return;
   }
+
+  try {
+    await logProduction({
+      product_id: selectedProduct,
+      user_id: defaultuserID,
+      mixes_made: Number(mixes),
+    });
+
+    alert("Production logged!");
+    setMixes(0);
+  } catch (err) {
+    console.error(err);
+    alert("Error logging production");
+  }
+}
 
   return (
     <div>
