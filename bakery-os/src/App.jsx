@@ -1,7 +1,7 @@
-import Transport from "./pages/Transport";
+import Admin from "./pages/Admin";
 
 function App() {
-  return <Transport />;
+  return <Admin />;
 }
 
 export default App;

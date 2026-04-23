@@ -69,6 +69,7 @@ export async function startDelivery({
   // 5. Create delivery record
   await supabase.from("deliveries").insert([
     {
+      product_id,
       delivery_user_id,
       from_location_id: store.id,
       to_location_id: transit.id,
@@ -156,10 +157,7 @@ export async function completeDelivery({
 export async function getActiveDeliveries() {
   const { data, error } = await supabase
     .from("deliveries")
-    .select(`
-      *,
-      products(name)
-    `)
+    .select("*")
     .eq("status", "in_transit");
 
   if (error) throw error;

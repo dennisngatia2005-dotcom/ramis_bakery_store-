@@ -103,8 +103,8 @@ export default function Transport() {
       {deliveries.map((d) => (
         <div key={d.id}>
           <p>
-            {d.products?.name} — {d.crates_sent} crates
-          </p>
+            Product ID: {d.product_id} — {d.crates_sent} crates
+        </p>
           <button onClick={() => setSelectedDelivery(d)}>
             Complete
           </button>
