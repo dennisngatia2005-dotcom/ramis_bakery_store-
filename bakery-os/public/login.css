@@ -1,0 +1,131 @@
+body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at top, rgba(232, 184, 75, 0.12), transparent 28%),
+        linear-gradient(180deg, #11100e 0%, #0d0c0a 100%);
+}
+
+.auth-shell {
+    width: min(100%, 780px);
+    padding: 2rem;
+}
+
+.auth-card {
+    background: rgba(26, 25, 22, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+}
+
+.auth-hero {
+    padding: 2rem 2rem 1.5rem;
+}
+
+.auth-content {
+    display: grid;
+    gap: 1.5rem;
+    padding: 0 2rem 2rem;
+}
+
+.auth-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.auth-header .logo {
+    font-size: 1.4rem;
+    letter-spacing: 0.12em;
+}
+
+.auth-header p {
+    max-width: 42rem;
+    font-size: 0.95rem;
+    line-height: 1.8;
+    color: var(--muted);
+}
+
+.auth-switch {
+    display: inline-flex;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+    padding: 0.25rem;
+}
+
+.auth-toggle {
+    border-radius: 999px;
+    min-width: 140px;
+    padding: 0.75rem 1rem;
+    border: none;
+    font-size: 0.75rem;
+    font-family: var(--sans);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: transparent;
+    color: var(--muted);
+}
+
+.auth-toggle.active {
+    background: var(--accent);
+    color: var(--bg);
+}
+
+.role-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.auth-form {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.75rem;
+    display: grid;
+    gap: 1rem;
+}
+
+.field-note {
+    color: var(--muted);
+    font-size: 0.77rem;
+    font-family: var(--mono);
+    margin-top: -0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.form-actions {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+@media (max-width: 720px) {
+    .auth-shell {
+        padding: 1rem;
+    }
+
+    .auth-card {
+        border-radius: 12px;
+    }
+
+    .auth-switch {
+        width: 100%;
+    }
+
+    .auth-toggle {
+        flex: 1;
+    }
+}
