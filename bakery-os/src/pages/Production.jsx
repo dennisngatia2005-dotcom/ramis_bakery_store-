@@ -11,6 +11,7 @@ export default function Production() {
   useEffect(() => {
     async function fetchProducts() {
       const { data } = await supabase.from('products').select('*');
+      console.log('Products:', data);
       setProducts(data);
     }
     fetchProducts();
