@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
-
+import LogoutButton from "../components/LogoutButton";
 export default function Admin() {
   const [salesPerHour, setSalesPerHour] = useState([]);
   const [revenueToday, setRevenueToday] = useState(0);
@@ -166,6 +166,7 @@ export default function Admin() {
     <div className="container">
       <div className="section-header">
         <div className="section-title">
+            <LogoutButton />
           <span>Department</span>
           Admin Dashboard
         </div>

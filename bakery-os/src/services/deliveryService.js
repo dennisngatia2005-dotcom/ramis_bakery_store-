@@ -1,12 +1,42 @@
 import { supabase } from "../supabaseClient";
 
+// 🔹 helper: get or create inventory row
+async function getOrCreateInventory(product_id, location_id) {
+  const { data, error } = await supabase
+    .from("inventory")
+    .select("*")
+    .eq("product_id", product_id)
+    .eq("location_id", location_id)
+    .maybeSingle();
+
+  if (data) return data;
+
+  // create if not exists
+  const { data: newRow, error: insertError } = await supabase
+    .from("inventory")
+    .insert([
+      {
+        product_id,
+        location_id,
+        quantity_crates: 0,
+        quantity_cakes: 0,
+      },
+    ])
+    .select()
+    .single();
+
+  if (insertError) throw insertError;
+
+  return newRow;
+}
 // START DELIVERY
 export async function startDelivery({
   product_id,
   delivery_user_id,
   crates_sent,
 }) {
-  // 1. Get locations
+  if (crates_sent <= 0) throw new Error("Invalid crates");
+
   const { data: store } = await supabase
     .from("inventory_locations")
     .select("*")
@@ -19,54 +49,31 @@ export async function startDelivery({
     .eq("name", "transit")
     .single();
 
-  // 2. Get inventory in store
-  const { data: inventory } = await supabase
-    .from("inventory")
-    .select("*")
-    .eq("product_id", product_id)
-    .eq("location_id", store.id)
-    .single();
+  const storeInv = await getOrCreateInventory(product_id, store.id);
+  const transitInv = await getOrCreateInventory(product_id, transit.id);
 
-  if (!inventory || inventory.quantity_crates < crates_sent) {
+  // ❌ prevent negative stock
+  if (storeInv.quantity_crates < crates_sent) {
     throw new Error("Not enough crates in store");
   }
 
-  // 3. Deduct from store
+  // update store
   await supabase
     .from("inventory")
     .update({
-      quantity_crates: inventory.quantity_crates - crates_sent,
+      quantity_crates: storeInv.quantity_crates - crates_sent,
     })
-    .eq("id", inventory.id);
+    .eq("id", storeInv.id);
 
-  // 4. Add to transit
-  const { data: transitInventory } = await supabase
+  // update transit
+  await supabase
     .from("inventory")
-    .select("*")
-    .eq("product_id", product_id)
-    .eq("location_id", transit.id)
-    .single();
+    .update({
+      quantity_crates: transitInv.quantity_crates + crates_sent,
+    })
+    .eq("id", transitInv.id);
 
-  if (transitInventory) {
-    await supabase
-      .from("inventory")
-      .update({
-        quantity_crates:
-          transitInventory.quantity_crates + crates_sent,
-      })
-      .eq("id", transitInventory.id);
-  } else {
-    await supabase.from("inventory").insert([
-      {
-        product_id,
-        location_id: transit.id,
-        quantity_crates: crates_sent,
-        quantity_cakes: 0,
-      },
-    ]);
-  }
-
-  // 5. Create delivery record
+  // create delivery
   await supabase.from("deliveries").insert([
     {
       product_id,
@@ -87,6 +94,8 @@ export async function completeDelivery({
   crates_received,
   broken_cakes,
 }) {
+  if (crates_received < 0) throw new Error("Invalid crates");
+
   const { data: transit } = await supabase
     .from("inventory_locations")
     .select("*")
@@ -99,50 +108,30 @@ export async function completeDelivery({
     .eq("name", "market")
     .single();
 
-  // 1. Remove from transit
-  const { data: transitInv } = await supabase
-    .from("inventory")
-    .select("*")
-    .eq("product_id", product_id)
-    .eq("location_id", transit.id)
-    .single();
+  const transitInv = await getOrCreateInventory(product_id, transit.id);
+  const marketInv = await getOrCreateInventory(product_id, market.id);
 
+  if (transitInv.quantity_crates < crates_received) {
+    throw new Error("Transit stock mismatch");
+  }
+
+  // remove from transit
   await supabase
     .from("inventory")
     .update({
-      quantity_crates:
-        transitInv.quantity_crates - crates_received,
+      quantity_crates: transitInv.quantity_crates - crates_received,
     })
     .eq("id", transitInv.id);
 
-  // 2. Add to market
-  const { data: marketInv } = await supabase
+  // add to market
+  await supabase
     .from("inventory")
-    .select("*")
-    .eq("product_id", product_id)
-    .eq("location_id", market.id)
-    .single();
+    .update({
+      quantity_crates: marketInv.quantity_crates + crates_received,
+    })
+    .eq("id", marketInv.id);
 
-  if (marketInv) {
-    await supabase
-      .from("inventory")
-      .update({
-        quantity_crates:
-          marketInv.quantity_crates + crates_received,
-      })
-      .eq("id", marketInv.id);
-  } else {
-    await supabase.from("inventory").insert([
-      {
-        product_id,
-        location_id: market.id,
-        quantity_crates: crates_received,
-        quantity_cakes: 0,
-      },
-    ]);
-  }
-
-  // 3. Update delivery record
+  // update delivery
   await supabase
     .from("deliveries")
     .update({

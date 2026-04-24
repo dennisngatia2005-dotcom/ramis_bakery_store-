@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import LogoutButton from "../components/LogoutButton";
 import {
   startDelivery,
   completeDelivery,
@@ -75,6 +76,7 @@ export default function Transport() {
     <div className="container">
       <div className="section-header">
         <div className="section-title">
+          <LogoutButton />
           <span>Department</span>
           Transport
         </div>

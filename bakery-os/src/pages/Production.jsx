@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { logProduction } from '../services/productionService';
+import LogoutButton from "../components/LogoutButton";
 const defaultuserID = '18eb419f-0427-4fbc-9f48-ab0eee711e1f';
 export default function Production() {
   const [products, setProducts] = useState([]);
@@ -44,6 +45,7 @@ export default function Production() {
     <div className="container">
       <div className="section-header">
         <div className="section-title">
+            <LogoutButton />
           <span>Department</span>
           Production
         </div>

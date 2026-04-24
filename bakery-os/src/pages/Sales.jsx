@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { makeSale } from "../services/salesService";
-
+import LogoutButton from "../components/LogoutButton";
 const DEFAULT_USER_ID = "18eb419f-0427-4fbc-9f48-ab0eee711e1f";
 
 export default function Sales() {
@@ -45,78 +45,43 @@ export default function Sales() {
   }
 
   return (
-    <div className="container">
-      <div className="section-header">
-        <div className="section-title">
-          <span>Department</span>
-          Sales
-        </div>
-      </div>
+    <div>
+      <LogoutButton />  
+      <h2>Sales</h2>
+      <form onSubmit={handleSale}>
+        <select onChange={(e) => setCustomer(e.target.value)}>
+          <option>Select Customer</option>
+          {customers.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
 
-      <div className="card" style={{ maxWidth: 520, margin: '0 auto' }}>
-        <div className="card-title">Record a Sale</div>
-        <form onSubmit={handleSale}>
-          <div className="form-group">
-            <label>Customer</label>
-            <select
-              className="input"
-              onChange={(e) => setCustomer(e.target.value)}
-              required
-            >
-              <option value="">Select Customer</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        <select onChange={(e) => setProduct(e.target.value)}>
+          <option>Select Product</option>
+          {products.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
 
-          <div className="form-group">
-            <label>Product</label>
-            <select
-              className="input"
-              onChange={(e) => setProduct(e.target.value)}
-              required
-            >
-              <option value="">Select Product</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        <input
+          type="number"
+          placeholder="Quantity"
+          value={quantity}
+          onChange={(e) => setQuantity(e.target.value)}
+        />
 
-          <div className="form-group">
-            <label>Quantity</label>
-            <input
-              className="input"
-              type="number"
-              placeholder="Quantity"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              required
-            />
-          </div>
+        <select onChange={(e) => setPriceType(e.target.value)}>
+          <option value="retail">Retail</option>
+          <option value="wholesale">Wholesale</option>
+        </select>
 
-          <div className="form-group">
-            <label>Price Type</label>
-            <select
-              className="input"
-              onChange={(e) => setPriceType(e.target.value)}
-              value={priceType}
-            >
-              <option value="retail">Retail</option>
-              <option value="wholesale">Wholesale</option>
-            </select>
-          </div>
-
-          <button type="submit" className="btn btn-primary btn-full">
-            Sell
-          </button>
-        </form>
-      </div>
+        <button type="submit">Sell</button>
+      </form>
+      <p>Balance: KES {customers.find((c) => c.id === customer)?.balance || 0}</p>
     </div>
   );
 }
