@@ -52,7 +52,7 @@ export default function Production() {
 
   if (product && mixes > 0) {
     const basins = mixes * (product.basins_per_mix || 0);
-    const totalCakes = basins * 3 * 40;
+    const totalCakes = Math.floor(basins * 3 * 40); // 3 trays per basin, 40 cakes per tray
 
     const crates = Math.floor(totalCakes / 40);
     const remainder = totalCakes % 40;
@@ -98,6 +98,7 @@ export default function Production() {
       <div className="section-header">
         <div className="section-title">
           <LogoutButton />
+          <span>Department</span>
           Production
         </div>
       </div>
