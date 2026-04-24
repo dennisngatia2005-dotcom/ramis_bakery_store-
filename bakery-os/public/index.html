@@ -4,759 +4,92 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BakeryOS — Management System</title>
+  <title>BakeryOS — Sign In</title>
   <link
     href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="./main.css">
-
+  <link rel="stylesheet" href="./login.css">
 </head>
 
 <body>
-
-  <nav>
-    <div class="logo">Bakery<span>OS</span></div>
-    <div class="nav-tabs">
-      <div class="nav-tab active" onclick="showPage('dashboard')">Dashboard</div>
-      <div class="nav-tab" onclick="showPage('production')">Production</div>
-      <div class="nav-tab" onclick="showPage('transport')">Transport</div>
-      <div class="nav-tab" onclick="showPage('sales')">Sales</div>
-      <div class="nav-tab" onclick="showPage('admin')">Admin</div>
-      <div class="nav-tab" onclick="showPage('api-docs')">API Docs</div>
-    </div>
-    <div class="status-dot" title="System Online"></div>
-  </nav>
-
-  <!-- ═══════════════════════════════ DASHBOARD ═══════════════════════════════ -->
-  <div class="page active" id="page-dashboard">
-    <div class="container">
-      <div class="section-header">
-        <div class="section-title">
-          <span>Overview</span>
-          Dashboard
+  <div class="auth-shell">
+    <div class="auth-card">
+      <div class="auth-hero">
+        <div class="auth-header">
+          <div class="logo">Bakery<span>OS</span></div>
+          <p>Sign in to access the BakeryOS workspace. Choose your role and continue with the secure admin or worker portal.</p>
         </div>
-        <div style="font-family: var(--mono); font-size: 0.75rem; color: var(--muted)" id="clock"></div>
-      </div>
-
-      <div class="grid-3" style="margin-bottom: 1.5rem;">
-        <div class="dept-card">
-          <div class="dept-name">Production Today</div>
-          <div class="dept-stat" id="dash-crates">0</div>
-          <div class="dept-detail">crates completed</div>
-        </div>
-        <div class="dept-card transport">
-          <div class="dept-name">Active Deliveries</div>
-          <div class="dept-stat" id="dash-trips">0</div>
-          <div class="dept-detail">trips in progress</div>
-        </div>
-        <div class="dept-card sales">
-          <div class="dept-name">Sales Revenue</div>
-          <div class="dept-stat" id="dash-revenue">0</div>
-          <div class="dept-detail">KES today</div>
+        <div class="auth-switch" role="tablist" aria-label="Select sign-in role">
+          <button type="button" class="auth-toggle active" id="adminRole" data-role="Admin">Admin</button>
+          <button type="button" class="auth-toggle" id="workerRole" data-role="Worker">Worker</button>
         </div>
       </div>
 
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">Recent Production</div>
-          <table class="log-table">
-            <thead>
-              <tr>
-                <th>Baker</th>
-                <th>Crates</th>
-                <th>Time</th>
-              </tr>
-            </thead>
-            <tbody id="dash-prod-log">
-              <tr>
-                <td colspan="3" class="empty">No logs yet</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="card">
-          <div class="card-title">Recent Sales</div>
-          <table class="log-table">
-            <thead>
-              <tr>
-                <th>Seller</th>
-                <th>Type</th>
-                <th>Amount</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="dash-sales-log">
-              <tr>
-                <td colspan="4" class="empty">No logs yet</td>
-              </tr>
-            </tbody>
-          </table>
+      <div class="auth-content">
+        <div class="card auth-form">
+          <div class="card-title">Sign In</div>
+          <div class="form-group">
+            <label>Selected role</label>
+            <input type="text" id="roleDisplay" value="Admin" readonly>
+            <div class="field-note">Use the toggle above to switch between admin and worker access.</div>
+          </div>
+          <div class="form-group">
+            <label>Email address</label>
+            <input type="email" id="userEmail" placeholder="you@bakeryos.local" autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="userPassword" placeholder="••••••••" autocomplete="current-password">
+          </div>
+          <div class="form-group">
+            <label>Branch or unit</label>
+            <input type="text" id="userUnit" placeholder="Main Kitchen / Warehouse" autocomplete="organization">
+          </div>
+          <div class="form-actions">
+            <button id="continueBtn" class="btn btn-primary btn-full" type="button">Continue as <span id="roleLabel">Admin</span></button>
+            <button class="btn btn-ghost btn-full" type="button">Need help signing in?</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ═══════════════════════════════ PRODUCTION ═══════════════════════════════ -->
-  <div class="page" id="page-production">
-    <div class="container">
-      <div class="section-header">
-        <div class="section-title">
-          <span>Department</span>
-          Production
-        </div>
-      </div>
+  <script>
+    const authCookieName = 'bakeryos_auth';
+    const adminBtn = document.getElementById('adminRole');
+    const workerBtn = document.getElementById('workerRole');
+    const roleDisplay = document.getElementById('roleDisplay');
+    const roleLabel = document.getElementById('roleLabel');
+    const continueBtn = document.getElementById('continueBtn');
 
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">Log Crate Completion</div>
-          <div class="form-group">
-            <label>Baker Name</label>
-            <input type="text" id="prod-baker" placeholder="e.g. Jane Mwangi">
-          </div>
-          <div class="form-group">
-            <label>Baker ID</label>
-            <input type="text" id="prod-baker-id" placeholder="e.g. BKR-001">
-          </div>
-          <div class="form-group">
-            <label>Crates Completed</label>
-            <input type="number" id="prod-crates" min="1" placeholder="0">
-          </div>
-          <div class="form-group">
-            <label>Completion Time <span style="color:var(--success);font-size:0.65rem;">● auto-stamps on first
-                keystroke</span></label>
-            <input type="datetime-local" id="prod-time" class="auto-stamp" readonly
-              style="color:var(--accent);cursor:default;" title="Stamped automatically when you start typing above">
-          </div>
-          <div class="form-group">
-            <label>Notes (optional)</label>
-            <input type="text" id="prod-notes" placeholder="Any remarks...">
-          </div>
-          <button class="btn btn-primary btn-full" onclick="logProduction()">Log Crate Completion</button>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Production Log</div>
-          <table class="log-table">
-            <thead>
-              <tr>
-                <th>Baker</th>
-                <th>ID</th>
-                <th>Crates</th>
-                <th>Time</th>
-              </tr>
-            </thead>
-            <tbody id="prod-log-body">
-              <tr>
-                <td colspan="4" class="empty">No production logs yet</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="grid-3" style="margin-top: 1.5rem;">
-        <div class="stat">
-          <div class="stat-label">Total Crates Today</div>
-          <div class="stat-value" id="stat-total-crates">0</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Active Bakers</div>
-          <div class="stat-value" id="stat-active-bakers">0</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Log Entries</div>
-          <div class="stat-value" id="stat-prod-entries">0</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════ TRANSPORT ═══════════════════════════════ -->
-  <div class="page" id="page-transport">
-    <div class="container">
-      <div class="section-header">
-        <div class="section-title">
-          <span>Department</span>
-          Transport
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <div>
-          <div class="card" style="margin-bottom: 1.5rem;">
-            <div class="card-title">New Trip</div>
-            <div class="form-group">
-              <label>Driver Name</label>
-              <input type="text" id="trp-driver" placeholder="e.g. Peter Kamau">
-            </div>
-            <div class="form-group">
-              <label>Driver ID</label>
-              <input type="text" id="trp-driver-id" placeholder="e.g. DRV-001">
-            </div>
-            <div class="form-group">
-              <label>Crates Dispatched</label>
-              <input type="number" id="trp-crates-out" min="1" placeholder="0">
-            </div>
-            <div class="form-group">
-              <label>Departure Time <span style="color:var(--success);font-size:0.65rem;">● auto-stamps on first
-                  keystroke</span></label>
-              <input type="datetime-local" id="trp-departure" class="auto-stamp" readonly
-                style="color:var(--accent);cursor:default;">
-            </div>
-            <button class="btn btn-primary btn-full" onclick="startTrip()">Start Trip</button>
-          </div>
-
-          <div class="card">
-            <div class="card-title">Journey Timer</div>
-            <div class="timer-display" id="timer-display">00:00:00</div>
-            <div style="display:flex; gap:0.75rem; margin-top:0.5rem;">
-              <button class="btn btn-primary" style="flex:1" onclick="startTimer()">Start</button>
-              <button class="btn btn-ghost" style="flex:1" onclick="stopTimer()">Stop</button>
-              <button class="btn btn-ghost" style="flex:1" onclick="resetTimer()">Reset</button>
-            </div>
-            <div
-              style="font-family: var(--mono); font-size: 0.7rem; color: var(--muted); text-align: center; margin-top: 0.75rem;"
-              id="timer-status">Timer ready</div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Update Arrival</div>
-          <div class="form-group">
-            <label>Select Trip</label>
-            <select id="trp-select" onchange="stampArrival()">
-              <option value="">— Select active trip —</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Arrival Time <span style="color:var(--success);font-size:0.65rem;">● auto-stamps on trip
-                select</span></label>
-            <input type="datetime-local" id="trp-arrival" class="auto-stamp" readonly
-              style="color:var(--accent);cursor:default;">
-          </div>
-          <div class="form-group">
-            <label>Crates Returned</label>
-            <input type="number" id="trp-crates-back" min="0" placeholder="0">
-          </div>
-          <button class="btn btn-danger btn-full" onclick="completeTrip()">Mark Arrived</button>
-
-          <div class="divider"></div>
-          <div class="card-title">Trip Log</div>
-          <table class="log-table">
-            <thead>
-              <tr>
-                <th>Driver</th>
-                <th>Out</th>
-                <th>Back</th>
-                <th>Duration</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="trp-log-body">
-              <tr>
-                <td colspan="5" class="empty">No trips yet</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════ SALES ═══════════════════════════════ -->
-  <div class="page" id="page-sales">
-    <div class="container">
-      <div class="section-header">
-        <div class="section-title">
-          <span>Department</span>
-          Sales
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">Record Sale</div>
-          <div class="form-group">
-            <label>Seller Name</label>
-            <input type="text" id="sale-seller" placeholder="e.g. Mary Njeri">
-          </div>
-          <div class="form-group">
-            <label>Seller ID</label>
-            <input type="text" id="sale-seller-id" placeholder="e.g. SLR-001">
-          </div>
-          <div class="form-group">
-            <label>Sale Type</label>
-            <select id="sale-type" onchange="updateSalePrice()">
-              <option value="retail">Retail (Normal)</option>
-              <option value="wholesale">Wholesale</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Crates Sold</label>
-            <input type="number" id="sale-crates" min="1" placeholder="0" oninput="updateSaleTotal()">
-          </div>
-          <div class="form-group">
-            <label>Price per Crate (KES)</label>
-            <input type="number" id="sale-price" placeholder="0" oninput="updateSaleTotal()">
-          </div>
-          <div class="form-group">
-            <label>Total Amount (KES)</label>
-            <input type="number" id="sale-total" placeholder="0" readonly style="color: var(--accent);">
-          </div>
-          <div class="form-group">
-            <label>Payment Due Date</label>
-            <input type="date" id="sale-due">
-          </div>
-          <button class="btn btn-primary btn-full" onclick="openMpesaModal()">Pay via M-Pesa</button>
-          <button class="btn btn-ghost btn-full" style="margin-top: 0.5rem;" onclick="recordSale('pending')">Save as
-            Pending</button>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Customer Lookup</div>
-          <div class="search-bar">
-            <input type="text" id="lookup-query" placeholder="Search seller name or ID...">
-            <button class="btn btn-ghost" onclick="lookupSeller()">Search</button>
-          </div>
-          <div id="lookup-result"></div>
-
-          <div class="divider"></div>
-          <div class="card-title">Sales Log</div>
-          <table class="log-table">
-            <thead>
-              <tr>
-                <th>Seller</th>
-                <th>Type</th>
-                <th>Crates</th>
-                <th>Amount</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="sale-log-body">
-              <tr>
-                <td colspan="5" class="empty">No sales yet</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="grid-3" style="margin-top: 1.5rem;">
-        <div class="stat">
-          <div class="stat-label">Total Revenue (KES)</div>
-          <div class="stat-value" id="stat-revenue">0</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Crates Sold</div>
-          <div class="stat-value" id="stat-crates-sold">0</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Pending Payments</div>
-          <div class="stat-value" id="stat-pending">0</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════ ADMIN ═══════════════════════════════ -->
-  <div class="page" id="page-admin">
-    <div class="container">
-      <div class="section-header">
-        <div class="section-title">
-          <span>Portal</span>
-          Admin
-        </div>
-        <button class="btn btn-ghost" onclick="exportData()">Export All Data</button>
-      </div>
-
-      <div class="grid-3" style="margin-bottom: 1.5rem;">
-        <div class="stat">
-          <div class="stat-label">Production Logs</div>
-          <div class="stat-value" id="admin-prod-count">0</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Transport Trips</div>
-          <div class="stat-value" id="admin-trp-count">0</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Total Sales</div>
-          <div class="stat-value" id="admin-sale-count">0</div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom: 1.5rem;">
-        <div class="card-title">All Production Logs</div>
-        <table class="log-table">
-          <thead>
-            <tr>
-              <th>Baker</th>
-              <th>ID</th>
-              <th>Crates</th>
-              <th>Time</th>
-              <th>Notes</th>
-            </tr>
-          </thead>
-          <tbody id="admin-prod-body">
-            <tr>
-              <td colspan="5" class="empty">No production logs</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="card" style="margin-bottom: 1.5rem;">
-        <div class="card-title">All Transport Trips</div>
-        <table class="log-table">
-          <thead>
-            <tr>
-              <th>Driver</th>
-              <th>ID</th>
-              <th>Out</th>
-              <th>Back</th>
-              <th>Departed</th>
-              <th>Arrived</th>
-              <th>Duration</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="admin-trp-body">
-            <tr>
-              <td colspan="8" class="empty">No transport logs</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="card">
-        <div class="card-title">All Sales Records</div>
-        <table class="log-table">
-          <thead>
-            <tr>
-              <th>Seller</th>
-              <th>ID</th>
-              <th>Type</th>
-              <th>Crates</th>
-              <th>Amount</th>
-              <th>Due</th>
-              <th>Status</th>
-              <th>M-Pesa Ref</th>
-            </tr>
-          </thead>
-          <tbody id="admin-sale-body">
-            <tr>
-              <td colspan="8" class="empty">No sales records</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════ API DOCS ═══════════════════════════════ -->
-  <div class="page" id="page-api-docs">
-    <div class="container">
-      <div class="section-header">
-        <div class="section-title">
-          <span>Flask Backend</span>
-          API Documentation
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom: 2rem;">
-        <div class="card-title">Base URL & Setup</div>
-        <div style="font-family: var(--mono); font-size: 0.8rem; line-height: 1.8; color: var(--muted);">
-          <p>Base URL: <span style="color: var(--accent);">http://localhost:5000/api</span></p>
-          <p style="margin-top: 0.5rem;">All requests use <span style="color: var(--accent2);">Content-Type:
-              application/json</span></p>
-          <p>All responses return <span style="color: var(--accent2);">{ "status": "ok", "data": {...} }</span> or <span
-              style="color: #e74c3c;">{ "status": "error", "message": "..." }</span></p>
-        </div>
-      </div>
-
-      <h3
-        style="font-size: 0.7rem; font-family: var(--mono); letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); margin-bottom: 1rem;">
-        Production Endpoints</h3>
-
-      <div class="api-endpoint">
-        <div class="api-header" onclick="toggleApi(this)">
-          <span class="api-method method-post">POST</span>
-          <span class="api-path">/api/production/log</span>
-          <span class="api-desc">Log a crate completion</span>
-        </div>
-        <div class="api-body">
-          <p>Request body:</p>
-          <pre>{
-  <span class="field">"baker_name"</span>: <span class="val">"Jane Mwangi"</span>,       <span class="comment">// string, required</span>
-  <span class="field">"baker_id"</span>: <span class="val">"BKR-001"</span>,          <span class="comment">// string, required</span>
-  <span class="field">"crates_completed"</span>: <span class="val">5</span>,        <span class="comment">// integer, required</span>
-  <span class="field">"completed_at"</span>: <span class="val">"2024-01-15T10:30:00"</span>, <span class="comment">// ISO datetime, required</span>
-  <span class="field">"notes"</span>: <span class="val">"Morning batch"</span>       <span class="comment">// string, optional</span>
-}</pre>
-          <p>Response:</p>
-          <pre>{
-  <span class="field">"status"</span>: <span class="val">"ok"</span>,
-  <span class="field">"data"</span>: { <span class="field">"id"</span>: <span class="val">1</span>, <span class="field">"message"</span>: <span class="val">"Production logged"</span> }
-}</pre>
-        </div>
-      </div>
-
-      <div class="api-endpoint">
-        <div class="api-header" onclick="toggleApi(this)">
-          <span class="api-method method-get">GET</span>
-          <span class="api-path">/api/production/logs</span>
-          <span class="api-desc">Get all production logs</span>
-        </div>
-        <div class="api-body">
-          <p>Query params: <span style="color: var(--accent);">?date=2024-01-15</span> (optional filter by date)</p>
-          <pre>{
-  <span class="field">"status"</span>: <span class="val">"ok"</span>,
-  <span class="field">"data"</span>: [
-    {
-      <span class="field">"id"</span>: <span class="val">1</span>,
-      <span class="field">"baker_name"</span>: <span class="val">"Jane Mwangi"</span>,
-      <span class="field">"baker_id"</span>: <span class="val">"BKR-001"</span>,
-      <span class="field">"crates_completed"</span>: <span class="val">5</span>,
-      <span class="field">"completed_at"</span>: <span class="val">"2024-01-15T10:30:00"</span>,
-      <span class="field">"notes"</span>: <span class="val">"Morning batch"</span>
+    function setRole(role) {
+      roleDisplay.value = role;
+      roleLabel.textContent = role;
+      adminBtn.classList.toggle('active', role === 'Admin');
+      workerBtn.classList.toggle('active', role === 'Worker');
+      document.getElementById('userEmail').placeholder = role === 'Admin'
+        ? 'admin@bakeryos.local'
+        : 'worker@bakeryos.local';
+      document.getElementById('userUnit').placeholder = role === 'Admin'
+        ? 'Head Office / Management'
+        : 'Bakery Floor / Delivery Unit';
     }
-  ]
-}</pre>
-        </div>
-      </div>
 
-      <h3
-        style="font-size: 0.7rem; font-family: var(--mono); letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent2); margin: 1.5rem 0 1rem;">
-        Transport Endpoints</h3>
-
-      <div class="api-endpoint">
-        <div class="api-header" onclick="toggleApi(this)">
-          <span class="api-method method-post">POST</span>
-          <span class="api-path">/api/transport/trip</span>
-          <span class="api-desc">Start a new delivery trip</span>
-        </div>
-        <div class="api-body">
-          <pre>{
-  <span class="field">"driver_name"</span>: <span class="val">"Peter Kamau"</span>,    <span class="comment">// string, required</span>
-  <span class="field">"driver_id"</span>: <span class="val">"DRV-001"</span>,         <span class="comment">// string, required</span>
-  <span class="field">"crates_dispatched"</span>: <span class="val">20</span>,       <span class="comment">// integer, required</span>
-  <span class="field">"departed_at"</span>: <span class="val">"2024-01-15T08:00:00"</span> <span class="comment">// ISO datetime, required</span>
-}</pre>
-          <p style="margin-top: 0.5rem;">Response returns <span style="color: var(--accent);">trip_id</span> for later
-            use.</p>
-        </div>
-      </div>
-
-      <div class="api-endpoint">
-        <div class="api-header" onclick="toggleApi(this)">
-          <span class="api-method method-post">POST</span>
-          <span class="api-path">/api/transport/trip/:id/arrive</span>
-          <span class="api-desc">Mark trip as arrived</span>
-        </div>
-        <div class="api-body">
-          <pre>{
-  <span class="field">"arrived_at"</span>: <span class="val">"2024-01-15T10:30:00"</span>,  <span class="comment">// ISO datetime, required</span>
-  <span class="field">"crates_returned"</span>: <span class="val">3</span>               <span class="comment">// integer, required (unsold crates)</span>
-}</pre>
-          <p style="margin-top: 0.5rem;">Backend auto-calculates <span
-              style="color: var(--accent);">duration_minutes</span> from departure to arrival.</p>
-        </div>
-      </div>
-
-      <div class="api-endpoint">
-        <div class="api-header" onclick="toggleApi(this)">
-          <span class="api-method method-get">GET</span>
-          <span class="api-path">/api/transport/trips</span>
-          <span class="api-desc">Get all trips</span>
-        </div>
-        <div class="api-body">
-          <p>Query params: <span style="color: var(--accent);">?status=active</span> or <span
-              style="color: var(--accent);">?status=completed</span></p>
-          <pre>{
-  <span class="field">"status"</span>: <span class="val">"ok"</span>,
-  <span class="field">"data"</span>: [
-    {
-      <span class="field">"id"</span>: <span class="val">1</span>,
-      <span class="field">"driver_name"</span>: <span class="val">"Peter Kamau"</span>,
-      <span class="field">"crates_dispatched"</span>: <span class="val">20</span>,
-      <span class="field">"crates_returned"</span>: <span class="val">3</span>,
-      <span class="field">"departed_at"</span>: <span class="val">"2024-01-15T08:00:00"</span>,
-      <span class="field">"arrived_at"</span>: <span class="val">"2024-01-15T10:30:00"</span>,
-      <span class="field">"duration_minutes"</span>: <span class="val">150</span>,
-      <span class="field">"status"</span>: <span class="val">"completed"</span>
+    function setAuthCookie(role) {
+      const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
+      document.cookie = `${authCookieName}=${encodeURIComponent(role)}; path=/; expires=${expires}; SameSite=Lax`;
     }
-  ]
-}</pre>
-        </div>
-      </div>
 
-      <h3
-        style="font-size: 0.7rem; font-family: var(--mono); letter-spacing: 0.15em; text-transform: uppercase; color: var(--success); margin: 1.5rem 0 1rem;">
-        Sales Endpoints</h3>
+    continueBtn.addEventListener('click', () => {
+      const role = roleDisplay.value || 'Admin';
+      setAuthCookie(role);
+      window.location.replace('./index.html');
+    });
 
-      <div class="api-endpoint">
-        <div class="api-header" onclick="toggleApi(this)">
-          <span class="api-method method-post">POST</span>
-          <span class="api-path">/api/sales/record</span>
-          <span class="api-desc">Record a sale</span>
-        </div>
-        <div class="api-body">
-          <pre>{
-  <span class="field">"seller_name"</span>: <span class="val">"Mary Njeri"</span>,      <span class="comment">// string, required</span>
-  <span class="field">"seller_id"</span>: <span class="val">"SLR-001"</span>,          <span class="comment">// string, required</span>
-  <span class="field">"sale_type"</span>: <span class="val">"wholesale"</span>,        <span class="comment">// "wholesale" | "retail"</span>
-  <span class="field">"crates_sold"</span>: <span class="val">10</span>,               <span class="comment">// integer, required</span>
-  <span class="field">"price_per_crate"</span>: <span class="val">500</span>,          <span class="comment">// number, required (KES)</span>
-  <span class="field">"total_amount"</span>: <span class="val">5000</span>,            <span class="comment">// number, required (KES)</span>
-  <span class="field">"payment_due"</span>: <span class="val">"2024-01-20"</span>,     <span class="comment">// date string, required</span>
-  <span class="field">"payment_status"</span>: <span class="val">"pending"</span>,     <span class="comment">// "paid" | "pending"</span>
-  <span class="field">"mpesa_ref"</span>: <span class="val">"QK2X1P9ABC"</span>       <span class="comment">// string, optional (M-Pesa ref)</span>
-}</pre>
-        </div>
-      </div>
-
-      <div class="api-endpoint">
-        <div class="api-header" onclick="toggleApi(this)">
-          <span class="api-method method-post">POST</span>
-          <span class="api-path">/api/sales/mpesa/callback</span>
-          <span class="api-desc">M-Pesa STK Push callback</span>
-        </div>
-        <div class="api-body">
-          <p>This endpoint receives callbacks from Safaricom Daraja API after STK Push payment.</p>
-          <pre>{
-  <span class="comment">// Sent BY Safaricom to your server:</span>
-  <span class="field">"Body"</span>: {
-    <span class="field">"stkCallback"</span>: {
-      <span class="field">"MerchantRequestID"</span>: <span class="val">"..."</span>,
-      <span class="field">"CheckoutRequestID"</span>: <span class="val">"..."</span>,
-      <span class="field">"ResultCode"</span>: <span class="val">0</span>,          <span class="comment">// 0 = success</span>
-      <span class="field">"ResultDesc"</span>: <span class="val">"The service request processed successfully"</span>,
-      <span class="field">"CallbackMetadata"</span>: {
-        <span class="field">"Item"</span>: [
-          { <span class="field">"Name"</span>: <span class="val">"Amount"</span>, <span class="field">"Value"</span>: <span class="val">5000</span> },
-          { <span class="field">"Name"</span>: <span class="val">"MpesaReceiptNumber"</span>, <span class="field">"Value"</span>: <span class="val">"QK2X1P9ABC"</span> },
-          { <span class="field">"Name"</span>: <span class="val">"PhoneNumber"</span>, <span class="field">"Value"</span>: <span class="val">254712345678</span> }
-        ]
-      }
-    }
-  }
-}</pre>
-          <p style="margin-top: 0.5rem; color: var(--accent);">⚠ Register this URL on Safaricom Daraja portal. Must be
-            HTTPS in production.</p>
-        </div>
-      </div>
-
-      <div class="api-endpoint">
-        <div class="api-header" onclick="toggleApi(this)">
-          <span class="api-method method-get">GET</span>
-          <span class="api-path">/api/sales/seller/:id</span>
-          <span class="api-desc">Look up seller by name or ID</span>
-        </div>
-        <div class="api-body">
-          <p>URL param: seller ID or use query <span style="color: var(--accent);">?name=Mary</span> for name search</p>
-          <pre>{
-  <span class="field">"status"</span>: <span class="val">"ok"</span>,
-  <span class="field">"data"</span>: {
-    <span class="field">"seller_id"</span>: <span class="val">"SLR-001"</span>,
-    <span class="field">"seller_name"</span>: <span class="val">"Mary Njeri"</span>,
-    <span class="field">"total_sales"</span>: <span class="val">12</span>,
-    <span class="field">"pending_payments"</span>: <span class="val">2</span>,
-    <span class="field">"recent_sales"</span>: [...]
-  }
-}</pre>
-        </div>
-      </div>
-
-      <div class="api-endpoint">
-        <div class="api-header" onclick="toggleApi(this)">
-          <span class="api-method method-get">GET</span>
-          <span class="api-path">/api/admin/summary</span>
-          <span class="api-desc">Get full system summary</span>
-        </div>
-        <div class="api-body">
-          <pre>{
-  <span class="field">"status"</span>: <span class="val">"ok"</span>,
-  <span class="field">"data"</span>: {
-    <span class="field">"production"</span>: { <span class="field">"total_crates_today"</span>: <span class="val">80</span>, <span class="field">"active_bakers"</span>: <span class="val">5</span> },
-    <span class="field">"transport"</span>: { <span class="field">"active_trips"</span>: <span class="val">2</span>, <span class="field">"completed_today"</span>: <span class="val">3</span> },
-    <span class="field">"sales"</span>: { <span class="field">"revenue_today"</span>: <span class="val">45000</span>, <span class="field">"pending_payments"</span>: <span class="val">4</span> }
-  }
-}</pre>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top: 2rem;">
-        <div class="card-title">Flask SQLite Schema (Copy This)</div>
-        <pre
-          style="font-family: var(--mono); font-size: 0.73rem; color: var(--muted); line-height: 1.7; overflow-x: auto;">
-<span class="comment"># models.py - paste this into your Flask app</span>
-
-<span class="field">CREATE TABLE production_logs</span> (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    baker_name TEXT NOT NULL,
-    baker_id TEXT NOT NULL,
-    crates_completed INTEGER NOT NULL,
-    completed_at DATETIME NOT NULL,
-    notes TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-<span class="field">CREATE TABLE transport_trips</span> (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    driver_name TEXT NOT NULL,
-    driver_id TEXT NOT NULL,
-    crates_dispatched INTEGER NOT NULL,
-    crates_returned INTEGER DEFAULT 0,
-    departed_at DATETIME NOT NULL,
-    arrived_at DATETIME,
-    duration_minutes INTEGER,
-    status TEXT DEFAULT 'active',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-<span class="field">CREATE TABLE sales_records</span> (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    seller_name TEXT NOT NULL,
-    seller_id TEXT NOT NULL,
-    sale_type TEXT NOT NULL,
-    crates_sold INTEGER NOT NULL,
-    price_per_crate REAL NOT NULL,
-    total_amount REAL NOT NULL,
-    payment_due DATE NOT NULL,
-    payment_status TEXT DEFAULT 'pending',
-    mpesa_ref TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);</pre>
-      </div>
-    </div>
-  </div>
-
-  <!-- M-PESA MODAL -->
-  <div class="modal-overlay" id="mpesa-modal">
-    <div class="modal">
-      <div class="modal-title">M-Pesa Payment</div>
-      <div class="form-group">
-        <label>Customer Phone (254...)</label>
-        <input type="tel" id="mpesa-phone" placeholder="254712345678">
-      </div>
-      <div class="form-group">
-        <label>Amount (KES)</label>
-        <input type="number" id="mpesa-amount" readonly style="color: var(--accent);">
-      </div>
-      <div id="mpesa-status"
-        style="font-family: var(--mono); font-size: 0.75rem; color: var(--muted); margin-bottom: 1rem; min-height: 20px;">
-      </div>
-      <div style="display: flex; gap: 0.75rem;">
-        <button class="btn btn-primary" style="flex:1" onclick="processMpesa()">Send STK Push</button>
-        <button class="btn btn-ghost" style="flex:1" onclick="closeMpesaModal()">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TOAST -->
-  <div id="toast"></div>
-
-  <script src="./login.js"></script>
-  <script src="./main.js"></script>
+    adminBtn.addEventListener('click', () => setRole('Admin'));
+    workerBtn.addEventListener('click', () => setRole('Worker'));
+  </script>
 </body>
 
 </html>
