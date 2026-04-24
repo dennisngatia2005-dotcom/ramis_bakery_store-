@@ -5,24 +5,44 @@ export async function logProduction({
   user_id,
   mixes_made,
 }) {
-  // 1. Get product info
+  // 🔹 1. Get product safely
   const { data: product, error: productError } = await supabase
     .from('products')
     .select('*')
     .eq('id', product_id)
-    .single();
+    .maybeSingle();
 
-  if (productError) throw productError;
+  if (productError || !product) {
+    throw new Error("Product not found");
+  }
 
-  // 2. Compute values
-  const cakes_produced = mixes_made * product.cakes_per_mix;
-  const crates_produced = Math.floor(
-    cakes_produced / product.cakes_per_crate
-  );
+  // 🔹 2. Validate formulas
+  if (
+    product.basins_per_mix == null ||
+    product.sacks_per_mix == null
+  ) {
+    throw new Error("Product formula not configured");
+  }
 
-  const flour_used = mixes_made * 2; // adjust later
+  const cratesPerBasin = 3;
+  const cakesPerCrate = 40;
 
-  // 3. Insert production log
+  // 🔹 3. Compute (SAFE rounding)
+  const basins = mixes_made * product.basins_per_mix;
+
+  const crates = Math.floor(basins * cratesPerBasin);
+  const cakes = Math.floor(crates * cakesPerCrate);
+  const flourUsed = mixes_made * product.sacks_per_mix;
+
+  console.log({
+    mixes_made,
+    basins,
+    crates,
+    cakes,
+    flourUsed,
+  });
+
+  // 🔹 4. Insert production log
   const { error: insertError } = await supabase
     .from('production_logs')
     .insert([
@@ -30,46 +50,55 @@ export async function logProduction({
         product_id,
         user_id,
         mixes_made,
-        cakes_produced,
-        crates_produced,
-        flour_used,
+        cakes_produced: cakes,
+        crates_produced: crates,
+        flour_used: flourUsed,
       },
     ]);
 
   if (insertError) throw insertError;
 
-  // 4. Update inventory (STORE location)
-  const { data: location } = await supabase
+  // 🔹 5. Get STORE location
+  const { data: location, error: locError } = await supabase
     .from('inventory_locations')
     .select('*')
     .eq('name', 'store')
-    .single();
+    .maybeSingle();
 
+  if (locError || !location) {
+    throw new Error("Store location not found");
+  }
+
+  // 🔹 6. Get or create inventory row
   const { data: existing } = await supabase
     .from('inventory')
     .select('*')
     .eq('product_id', product_id)
     .eq('location_id', location.id)
-    .single();
+    .maybeSingle();
 
   if (existing) {
-    await supabase
+    const { error: updateError } = await supabase
       .from('inventory')
       .update({
-        quantity_cakes:
-          existing.quantity_cakes + cakes_produced,
-        quantity_crates:
-          existing.quantity_crates + crates_produced,
+        quantity_cakes: existing.quantity_cakes + cakes,
+        quantity_crates: existing.quantity_crates + crates,
       })
       .eq('id', existing.id);
+
+    if (updateError) throw updateError;
   } else {
-    await supabase.from('inventory').insert([
-      {
-        product_id,
-        location_id: location.id,
-        quantity_cakes: cakes_produced,
-        quantity_crates: crates_produced,
-      },
-    ]);
+    const { error: insertInvError } = await supabase
+      .from('inventory')
+      .insert([
+        {
+          product_id,
+          location_id: location.id,
+          quantity_cakes: cakes,
+          quantity_crates: crates,
+        },
+      ]);
+
+    if (insertInvError) throw insertInvError;
   }
 }
