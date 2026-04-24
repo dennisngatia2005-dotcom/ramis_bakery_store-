@@ -35,7 +35,7 @@ export async function logProduction({
     // 🔹 3. Calculations
     const basins = mixes_made * product.basins_per_mix;
 
-    const totalCakes = basins * cratesPerBasin * cakesPerCrate;
+    const totalCakes = Math.floor(basins * cratesPerBasin * cakesPerCrate);
 
     const crates = Math.floor(totalCakes / cakesPerCrate);
     const remainderCakes = totalCakes % cakesPerCrate;
