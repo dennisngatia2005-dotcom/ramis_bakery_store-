@@ -72,67 +72,114 @@ export default function Transport() {
   }
 
   return (
-    <div>
-      <h2>Transport</h2>
-
-      {/* START DELIVERY */}
-      <form onSubmit={handleStart}>
-        <h3>Start Delivery</h3>
-
-        <select onChange={(e) => setProduct(e.target.value)}>
-          <option>Select Product</option>
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-
-        <input
-          type="number"
-          placeholder="Crates"
-          value={crates}
-          onChange={(e) => setCrates(e.target.value)}
-        />
-
-        <button type="submit">Start</button>
-      </form>
-
-      {/* ACTIVE DELIVERIES */}
-      <h3>Active Deliveries</h3>
-      {deliveries.map((d) => (
-        <div key={d.id}>
-          <p>
-            Product ID: {d.product_id} — {d.crates_sent} crates
-        </p>
-          <button onClick={() => setSelectedDelivery(d)}>
-            Complete
-          </button>
+    <div className="container">
+      <div className="section-header">
+        <div className="section-title">
+          <span>Department</span>
+          Transport
         </div>
-      ))}
+      </div>
 
-      {/* COMPLETE DELIVERY */}
-      {selectedDelivery && (
-        <form onSubmit={handleComplete}>
-          <h3>Complete Delivery</h3>
+      <div className="grid-2">
+        <div className="card">
+          <div className="card-title">Start Delivery</div>
+          <form onSubmit={handleStart}>
+            <div className="form-group">
+              <label>Product</label>
+              <select
+                className="input"
+                onChange={(e) => setProduct(e.target.value)}
+                value={product}
+                required
+              >
+                <option value="">Select Product</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <input
-            type="number"
-            placeholder="Crates received"
-            value={receivedCrates}
-            onChange={(e) => setReceivedCrates(e.target.value)}
-          />
+            <div className="form-group">
+              <label>Crates</label>
+              <input
+                className="input"
+                type="number"
+                placeholder="Crates"
+                value={crates}
+                onChange={(e) => setCrates(e.target.value)}
+                required
+              />
+            </div>
 
-          <input
-            type="number"
-            placeholder="Broken cakes"
-            value={broken}
-            onChange={(e) => setBroken(e.target.value)}
-          />
+            <button type="submit" className="btn btn-primary btn-full">
+              Start Delivery
+            </button>
+          </form>
+        </div>
 
-          <button type="submit">Finish</button>
-        </form>
-      )}
+        <div className="card">
+          <div className="card-title">Complete Delivery</div>
+          {selectedDelivery ? (
+            <form onSubmit={handleComplete}>
+              <div className="form-group">
+                <label>Crates Received</label>
+                <input
+                  className="input"
+                  type="number"
+                  placeholder="Crates received"
+                  value={receivedCrates}
+                  onChange={(e) => setReceivedCrates(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Broken Cakes</label>
+                <input
+                  className="input"
+                  type="number"
+                  placeholder="Broken cakes"
+                  value={broken}
+                  onChange={(e) => setBroken(e.target.value)}
+                  required
+                />
+              </div>
+
+              <button type="submit" className="btn btn-secondary btn-full">
+                Complete Delivery
+              </button>
+            </form>
+          ) : (
+            <p className="empty">Select an active delivery to complete</p>
+          )}
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '1.5rem' }}>
+        <div className="card-title">Active Deliveries</div>
+        <div className="card-content">
+          {deliveries.length === 0 ? (
+            <p className="empty">No active deliveries</p>
+          ) : (
+            deliveries.map((d) => (
+              <div key={d.id} className="row-item">
+                <span>
+                  Product ID: {d.product_id} — {d.crates_sent} crates
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => setSelectedDelivery(d)}
+                >
+                  Complete
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }

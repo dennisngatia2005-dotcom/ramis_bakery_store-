@@ -83,13 +83,35 @@ export default function Dashboard() {
     .reduce((sum, i) => sum + i.quantity_cakes, 0);
 
   return (
-    <div>
-      <h1>Dashboard</h1>
+    <div className="container">
+      <div className="section-header">
+        <div className="section-title">
+          <span>Department</span>
+          Dashboard
+        </div>
+      </div>
 
-      <div>
-        <h3>Store Cakes: {storeCakes}</h3>
-        <h3>Market Cakes: {marketCakes}</h3>
-        <h3>Production Today: {productionToday}</h3>
+      <div className="grid-3">
+        <div className="card">
+          <div className="card-title">Store Cakes</div>
+          <div className="card-content">
+            <p>{storeCakes}</p>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-title">Market Cakes</div>
+          <div className="card-content">
+            <p>{marketCakes}</p>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-title">Production Today</div>
+          <div className="card-content">
+            <p>{productionToday}</p>
+          </div>
+        </div>
       </div>
     </div>
   );

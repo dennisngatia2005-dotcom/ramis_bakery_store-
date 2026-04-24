@@ -41,31 +41,51 @@ export default function Production() {
 }
 
   return (
-    <div>
-      <h2>Production</h2>
+    <div className="container">
+      <div className="section-header">
+        <div className="section-title">
+          <span>Department</span>
+          Production
+        </div>
+      </div>
 
-      <form onSubmit={handleSubmit}>
-        <select
-          value={selectedProduct}
-          onChange={(e) => setSelectedProduct(e.target.value)}
-        >
-          <option value="">Select Product</option>
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+      <div className="card" style={{ maxWidth: 520, margin: '0 auto' }}>
+        <div className="card-title">Create Production Mix</div>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Product</label>
+            <select
+              className="input"
+              value={selectedProduct}
+              onChange={(e) => setSelectedProduct(e.target.value)}
+              required
+            >
+              <option value="">Select Product</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <input
-          type="number"
-          placeholder="Mixes made"
-          value={mixes}
-          onChange={(e) => setMixes(e.target.value)}
-        />
+          <div className="form-group">
+            <label>Mixes Made</label>
+            <input
+              className="input"
+              type="number"
+              placeholder="Mixes made"
+              value={mixes}
+              onChange={(e) => setMixes(e.target.value)}
+              required
+            />
+          </div>
 
-        <button type="submit">Submit</button>
-      </form>
+          <button type="submit" className="btn btn-primary btn-full">
+            Submit
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
