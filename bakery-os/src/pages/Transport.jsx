@@ -167,16 +167,17 @@ export default function Transport() {
           ) : (
             deliveries.map((d) => (
               <div key={d.id} className="row-item">
-                <span>
-                  Product ID: {d.product_id} — {d.crates_sent} crates
-                </span>
                 <button
                   type="button"
                   className="btn btn-ghost"
+                  style={{ marginRight: "0.75rem" }}
                   onClick={() => setSelectedDelivery(d)}
                 >
                   Complete
                 </button>
+                <span>
+                  Product ID: {d.product_id} — {d.crates_sent} crates
+                </span>
               </div>
             ))
           )}
