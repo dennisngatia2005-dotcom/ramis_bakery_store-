@@ -7,7 +7,7 @@ export default function LogoutButton() {
   }
 
   return (
-    <button onClick={handleLogout}>
+    <button onClick={handleLogout} className="btn btn-ghost">
       Logout
     </button>
   );

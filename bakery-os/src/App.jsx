@@ -12,41 +12,6 @@ function App() {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function init() {
-      const { data: sessionData } = await supabase.auth.getSession();
-
-      if (sessionData.session) {
-        const user = sessionData.session.user;
-        setUser(user);
-
-        await fetchRole(user.id);
-      }
-
-      setLoading(false);
-    }
-
-    init();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session) {
-          const user = session.user;
-          setUser(user);
-
-          await fetchRole(user.id);
-        } else {
-          setUser(null);
-          setRole(null);
-        }
-      }
-    );
-
-    return () => {
-      listener.subscription.unsubscribe();
-    };
-  }, []);
-
   // 🔥 central role fetch (IMPORTANT)
   async function fetchRole(userId) {
     const { data, error } = await supabase
@@ -71,6 +36,40 @@ function App() {
 
     setRole(data.role);
   }
+
+  useEffect(() => {
+    async function init() {
+      const { data: sessionData } = await supabase.auth.getSession();
+
+      if (sessionData.session) {
+        const user = sessionData.session.user;
+        setUser(user);
+
+        await fetchRole(user.id);
+      }
+
+      setLoading(false);
+    }
+
+    init();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session) {
+          const user = session.user;
+          setUser(user);
+          await fetchRole(user.id);
+        } else {
+          setUser(null);
+          setRole(null);
+        }
+      }
+    );
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
   // 🔥 LOADING STATE (critical)
   if (loading) return <div>Initializing...</div>;
