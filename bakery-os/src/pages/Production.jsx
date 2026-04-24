@@ -5,58 +5,66 @@ import LogoutButton from "../components/LogoutButton";
 
 const defaultUserID = "18eb419f-0427-4fbc-9f48-ab0eee711e1f";
 
+function getShift() {
+  const hour = new Date().getHours();
+  return hour >= 6 && hour < 18 ? "day" : "night";
+}
+
 export default function Production() {
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [mixes, setMixes] = useState(0);
+  const [note, setNote] = useState("");
+  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // 🔹 Load products safely
+  // 🔹 Load products
   useEffect(() => {
     async function fetchProducts() {
-      try {
-        const { data, error } = await supabase
-          .from("products")
-          .select("*");
-
-        if (error) {
-          console.error(error);
-          return;
-        }
-
-        setProducts(data || []);
-      } catch (err) {
-        console.error("Fetch error:", err);
-      }
+      const { data } = await supabase.from("products").select("*");
+      setProducts(data || []);
     }
-
     fetchProducts();
   }, []);
 
-  // 🔹 Safe product lookup
-  const product = products?.find((p) => p.id === selectedProduct);
+  // 🔹 Load today's history
+  async function loadHistory() {
+    const today = new Date().toISOString().split("T")[0];
 
-  // 🔹 Preview calculation
+    const { data } = await supabase
+      .from("production_logs")
+      .select("*")
+      .eq("user_id", defaultUserID)
+      .gte("created_at", today)
+      .order("created_at", { ascending: false });
+
+    setHistory(data || []);
+  }
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  const product = products.find((p) => p.id === selectedProduct);
+
+  // 🔹 Preview
   let preview = null;
 
   if (product && mixes > 0) {
-    const cratesPerBasin = 3;
-    const cakesPerCrate = 40;
-
     const basins = mixes * (product.basins_per_mix || 0);
-    const crates = Math.floor(basins * cratesPerBasin);
-    const cakes = crates * cakesPerCrate;
-    const flourUsed = mixes * (product.sacks_per_mix || 0);
+    const totalCakes = basins * 3 * 40;
 
-    preview = { crates, cakes, flourUsed };
+    const crates = Math.floor(totalCakes / 40);
+    const remainder = totalCakes % 40;
+
+    preview = { crates, remainder, totalCakes };
   }
 
-  // 🔹 Submit handler
   async function handleSubmit(e) {
     e.preventDefault();
 
     if (!selectedProduct || mixes <= 0) {
-      alert("Select product and enter valid mixes");
+      alert("Enter valid data");
       return;
     }
 
@@ -67,15 +75,19 @@ export default function Production() {
         product_id: selectedProduct,
         user_id: defaultUserID,
         mixes_made: mixes,
+        note,
+        shift: getShift(),
       });
 
-      alert("Production logged!");
+      alert("Production logged");
 
       setMixes(0);
+      setNote("");
       setSelectedProduct("");
+
+      loadHistory();
     } catch (err) {
-      console.error(err);
-      alert(err.message || "Error logging production");
+      alert(err.message);
     } finally {
       setLoading(false);
     }
@@ -86,23 +98,18 @@ export default function Production() {
       <div className="section-header">
         <div className="section-title">
           <LogoutButton />
-          <span>Department</span>
           Production
         </div>
       </div>
 
-      <div className="card" style={{ maxWidth: 520, margin: "0 auto" }}>
-        <div className="card-title">Create Production Mix</div>
-
+      <div className="card">
         <form onSubmit={handleSubmit}>
-          {/* Product */}
           <div className="form-group">
             <label>Product</label>
             <select
               className="input"
               value={selectedProduct}
               onChange={(e) => setSelectedProduct(e.target.value)}
-              required
             >
               <option value="">Select Product</option>
               {products.map((p) => (
@@ -113,37 +120,69 @@ export default function Production() {
             </select>
           </div>
 
-          {/* Mixes */}
           <div className="form-group">
-            <label>Mixes Made</label>
+            <label>Mixes</label>
             <input
               className="input"
               type="number"
-              min="1"
               value={mixes}
               onChange={(e) => setMixes(Number(e.target.value))}
-              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Note</label>
+            <input
+              className="input"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Optional"
             />
           </div>
 
           {/* Preview */}
           {preview && (
             <div className="card" style={{ marginTop: "10px" }}>
-              <div className="card-title">Preview</div>
-              <p>Crates: {preview.crates}</p>
-              <p>Cakes: {preview.cakes}</p>
-              <p>Flour: {preview.flourUsed.toFixed(2)} sacks</p>
+              <p>Full Crates: {preview.crates}</p>
+
+              {preview.remainder > 0 && (
+                <p>Partial Crate: {preview.remainder} cakes</p>
+              )}
+
+              <p>Total Cakes: {preview.totalCakes}</p>
             </div>
           )}
 
-          <button
-            type="submit"
-            className="btn btn-primary btn-full"
-            disabled={loading}
-          >
+          <button className="btn btn-primary btn-full">
             {loading ? "Submitting..." : "Submit"}
           </button>
         </form>
+      </div>
+
+      {/* 🔥 HISTORY */}
+      <div className="card" style={{ marginTop: "20px" }}>
+        <div className="card-title">Today’s Work</div>
+
+        {history.length === 0 && <p>No logs yet</p>}
+
+        {history.map((h) => (
+          <div key={h.id} style={{ marginBottom: "10px" }}>
+            <p><strong>{h.mixes_made} mixes</strong></p>
+            <p>{h.crates_produced} crates</p>
+
+            {h.remainder_cakes > 0 && (
+              <p>{h.remainder_cakes} extra cakes</p>
+            )}
+
+            {h.note && <p>Note: {h.note}</p>}
+
+            <small>
+              {new Date(h.created_at).toLocaleTimeString()}
+            </small>
+
+            <hr />
+          </div>
+        ))}
       </div>
     </div>
   );
