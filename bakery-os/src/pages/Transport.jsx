@@ -1,187 +1,153 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import LogoutButton from "../components/LogoutButton";
+
 import {
+  collectCrates,
   startDelivery,
-  completeDelivery,
+  arriveDelivery,
+  confirmReturn,
   getActiveDeliveries,
 } from "../services/deliveryService";
 
-const DEFAULT_USER_ID = "e18eb419f-0427-4fbc-9f48-ab0eee711e1f";
-
 export default function Transport() {
   const [products, setProducts] = useState([]);
-  const [deliveries, setDeliveries] = useState([]);
+  const [delivery, setDelivery] = useState(null);
 
   const [product, setProduct] = useState("");
   const [crates, setCrates] = useState(0);
+  const [returnCrates, setReturnCrates] = useState(0);
 
-  const [selectedDelivery, setSelectedDelivery] = useState(null);
-  const [receivedCrates, setReceivedCrates] = useState(0);
-  const [broken, setBroken] = useState(0);
+  const [timer, setTimer] = useState("");
 
-  // Load products + deliveries
   useEffect(() => {
     loadData();
+
+    const channel = supabase
+      .channel("transport-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "deliveries" },
+        () => loadData()
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
   }, []);
+
+  useEffect(() => {
+    if (delivery?.status === "in_transit") {
+      const interval = setInterval(() => {
+        const start = new Date(delivery.departed_at);
+        const now = new Date();
+        const diff = Math.floor((now - start) / 1000);
+        const mins = Math.floor(diff / 60);
+        const secs = diff % 60;
+        setTimer(`${mins}m ${secs}s`);
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [delivery]);
 
   async function loadData() {
     const { data: p } = await supabase.from("products").select("*");
     setProducts(p || []);
 
     const d = await getActiveDeliveries();
-    setDeliveries(d || []);
+    setDelivery(d[0] || null);
   }
 
-  // Start delivery
-  async function handleStart(e) {
+  async function handleCollect(e) {
     e.preventDefault();
-
-    try {
-      await startDelivery({
-        product_id: product,
-        delivery_user_id: DEFAULT_USER_ID,
-        crates_sent: Number(crates),
-      });
-
-      alert("Delivery started");
-      setCrates(0);
-      loadData();
-    } catch (err) {
-      alert(err.message);
-    }
+    const d = await collectCrates({
+      product_id: product,
+      crates: Number(crates),
+    });
+    setDelivery(d);
   }
 
-  // Complete delivery
-  async function handleComplete(e) {
+  async function handleStart() {
+    await startDelivery(delivery.id);
+  }
+
+  async function handleArrive() {
+    await arriveDelivery(delivery.id);
+  }
+
+  async function handleReturn(e) {
     e.preventDefault();
-
-    try {
-      await completeDelivery({
-        delivery_id: selectedDelivery.id,
-        product_id: selectedDelivery.product_id,
-        crates_received: Number(receivedCrates),
-        broken_cakes: Number(broken),
-      });
-
-      alert("Delivery completed");
-      setSelectedDelivery(null);
-      loadData();
-    } catch (err) {
-      alert(err.message);
-    }
+    await confirmReturn({
+      delivery_id: delivery.id,
+      product_id: delivery.product_id,
+      crates_returned: Number(returnCrates),
+    });
+    setDelivery(null);
   }
 
   return (
     <div className="container">
-      <div className="section-header">
-        <div className="section-title">
-          <LogoutButton />
-          <span>Department</span>
-          Transport
-        </div>
+      <div className="section-title">
+        <LogoutButton /> Transport
       </div>
 
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-title">Start Delivery</div>
-          <form onSubmit={handleStart}>
-            <div className="form-group">
-              <label>Product</label>
-              <select
-                className="input"
-                onChange={(e) => setProduct(e.target.value)}
-                value={product}
-                required
-              >
-                <option value="">Select Product</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
+      <div className="card">
+        {!delivery && (
+          <>
+            <h3>Collect Crates</h3>
+
+            <form onSubmit={handleCollect}>
+              <select className="input" onChange={(e)=>setProduct(e.target.value)}>
+                <option>Select Product</option>
+                {products.map(p=>(
+                  <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
-            </div>
 
-            <div className="form-group">
-              <label>Crates</label>
               <input
                 className="input"
                 type="number"
                 placeholder="Crates"
                 value={crates}
-                onChange={(e) => setCrates(e.target.value)}
-                required
+                onChange={(e)=>setCrates(e.target.value)}
               />
-            </div>
 
-            <button type="submit" className="btn btn-primary btn-full">
-              Start Delivery
-            </button>
-          </form>
-        </div>
-
-        <div className="card">
-          <div className="card-title">Complete Delivery</div>
-          {selectedDelivery ? (
-            <form onSubmit={handleComplete}>
-              <div className="form-group">
-                <label>Crates Received</label>
-                <input
-                  className="input"
-                  type="number"
-                  placeholder="Crates received"
-                  value={receivedCrates}
-                  onChange={(e) => setReceivedCrates(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Broken Cakes</label>
-                <input
-                  className="input"
-                  type="number"
-                  placeholder="Broken cakes"
-                  value={broken}
-                  onChange={(e) => setBroken(e.target.value)}
-                  required
-                />
-              </div>
-
-              <button type="submit" className="btn btn-secondary btn-full">
-                Complete Delivery
+              <button className="btn btn-primary btn-full">
+                Collect Crates
               </button>
             </form>
-          ) : (
-            <p className="empty">Select an active delivery to complete</p>
-          )}
-        </div>
-      </div>
+          </>
+        )}
 
-      <div className="card" style={{ marginTop: '1.5rem' }}>
-        <div className="card-title">Active Deliveries</div>
-        <div className="card-content">
-          {deliveries.length === 0 ? (
-            <p className="empty">No active deliveries</p>
-          ) : (
-            deliveries.map((d) => (
-              <div key={d.id} className="row-item">
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  style={{ marginRight: "0.75rem" }}
-                  onClick={() => setSelectedDelivery(d)}
-                >
-                  Complete
-                </button>
-                <span>
-                  Product ID: {d.product_id} — {d.crates_sent} crates
-                </span>
-              </div>
-            ))
-          )}
-        </div>
+        {delivery?.status === "collected" && (
+          <button className="btn btn-primary btn-full" onClick={handleStart}>
+            Start Delivery
+          </button>
+        )}
+
+        {delivery?.status === "in_transit" && (
+          <>
+            <p>⏱ {timer}</p>
+            <button className="btn btn-primary btn-full" onClick={handleArrive}>
+              Arrived
+            </button>
+          </>
+        )}
+
+        {delivery?.status === "at_market" && (
+          <form onSubmit={handleReturn}>
+            <input
+              className="input"
+              type="number"
+              placeholder="Empty Crates"
+              value={returnCrates}
+              onChange={(e)=>setReturnCrates(e.target.value)}
+            />
+            <button className="btn btn-secondary btn-full">
+              Confirm Return
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

@@ -1,125 +1,156 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { makeSale } from "../services/salesService";
 import LogoutButton from "../components/LogoutButton";
-const DEFAULT_USER_ID = "18eb419f-0427-4fbc-9f48-ab0eee711e1f";
+
+import {
+  getArrivedDeliveries,
+  confirmDelivery,
+  findCustomer,
+  getCustomerBalance,
+  processSale,
+} from "../services/salesService";
 
 export default function Sales() {
+  const [deliveries, setDeliveries] = useState([]);
+  const [selected, setSelected] = useState(null);
+
+  const [crates, setCrates] = useState(0);
+  const [broken, setBroken] = useState(0);
+
   const [products, setProducts] = useState([]);
-  const [customers, setCustomers] = useState([]);
+
+  const [search, setSearch] = useState("");
+  const [results, setResults] = useState([]);
+  const [customer, setCustomer] = useState(null);
+  const [balance, setBalance] = useState(0);
 
   const [product, setProduct] = useState("");
-  const [customer, setCustomer] = useState("");
-  const [quantity, setQuantity] = useState(0);
-  const [priceType, setPriceType] = useState("retail");
+  const [qty, setQty] = useState(0);
+  const [type, setType] = useState("retail");
 
   useEffect(() => {
-    async function load() {
-      const { data: p } = await supabase.from("products").select("*");
-      const { data: c } = await supabase.from("customers").select("*");
+    loadData();
 
-      setProducts(p || []);
-      setCustomers(c || []);
-    }
-    load();
+    const channel = supabase
+      .channel("sales-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "deliveries" },
+        () => loadData()
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
   }, []);
+
+  async function loadData() {
+    setDeliveries(await getArrivedDeliveries());
+
+    const { data: p } = await supabase.from("products").select("*");
+    setProducts(p || []);
+  }
+
+  async function handleConfirm(e) {
+    e.preventDefault();
+
+    await confirmDelivery({
+      delivery_id: selected.id,
+      product_id: selected.product_id,
+      crates_received: Number(crates),
+      broken_cakes: Number(broken),
+    });
+
+    setSelected(null);
+  }
+
+  async function handleSearch() {
+    const res = await findCustomer(search);
+    setResults(res);
+  }
+
+  async function selectCustomer(c) {
+    setCustomer(c);
+    setBalance(await getCustomerBalance(c.id));
+  }
 
   async function handleSale(e) {
     e.preventDefault();
 
-    try {
-      const total = await makeSale({
-        product_id: product,
-        customer_id: customer,
-        sales_user_id: DEFAULT_USER_ID,
-        quantity: Number(quantity),
-        price_type: priceType,
-      });
+    const price = type === "retail" ? 50 : 43;
 
-      alert(`Sale recorded: KES ${total}`);
-      setQuantity(0);
-    } catch (err) {
-      console.error(err);
-      alert(err.message);
-    }
+    await processSale({
+      customer_id: customer.id,
+      product_id: product,
+      quantity: Number(qty),
+      price,
+      sale_type: type,
+    });
+
+    setBalance(await getCustomerBalance(customer.id));
+    setQty(0);
   }
 
   return (
     <div className="container">
-      <div className="section-header">
-        <div className="section-title">
-          <LogoutButton />
-          <span>Department</span>
-          Sales
-        </div>
+      <div className="section-title">
+        <LogoutButton /> Sales
       </div>
 
+      {/* Deliveries */}
       <div className="card">
-        <div className="card-title">Make Sale</div>
-        <div className="card-content">
-          <form onSubmit={handleSale}>
-            <div className="form-group">
-              <label>Customer</label>
-              <select
-                className="input"
-                onChange={(e) => setCustomer(e.target.value)}
-                value={customer}
-                required
-              >
-                <option value="">Select Customer</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
+        <h3>Incoming Deliveries</h3>
+
+        {deliveries.map(d=>(
+          <div key={d.id} className="row-item">
+            {d.crates_sent} crates
+            <button onClick={()=>setSelected(d)}>Confirm</button>
+          </div>
+        ))}
+      </div>
+
+      {selected && (
+        <div className="card">
+          <form onSubmit={handleConfirm}>
+            <input type="number" placeholder="Crates received" value={crates} onChange={(e)=>setCrates(e.target.value)} />
+            <input type="number" placeholder="Broken cakes" value={broken} onChange={(e)=>setBroken(e.target.value)} />
+            <button>Confirm</button>
+          </form>
+        </div>
+      )}
+
+      {/* Customer */}
+      <div className="card">
+        <input placeholder="Search customer" onChange={(e)=>setSearch(e.target.value)} />
+        <button onClick={handleSearch}>Search</button>
+
+        {results.map(c=>(
+          <div key={c.id} onClick={()=>selectCustomer(c)}>
+            {c.name}
+          </div>
+        ))}
+
+        {customer && (
+          <>
+            <p>Balance: KES {balance}</p>
+
+            <form onSubmit={handleSale}>
+              <select onChange={(e)=>setProduct(e.target.value)}>
+                {products.map(p=>(
+                  <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
-            </div>
 
-            <div className="form-group">
-              <label>Product</label>
-              <select
-                className="input"
-                onChange={(e) => setProduct(e.target.value)}
-                value={product}
-                required
-              >
-                <option value="">Select Product</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <input type="number" value={qty} onChange={(e)=>setQty(e.target.value)} />
 
-            <div className="form-group">
-              <label>Quantity</label>
-              <input
-                className="input"
-                type="number"
-                placeholder="Quantity"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Price Type</label>
-              <select
-                className="input"
-                onChange={(e) => setPriceType(e.target.value)}
-                value={priceType}
-              >
+              <select onChange={(e)=>setType(e.target.value)}>
                 <option value="retail">Retail</option>
                 <option value="wholesale">Wholesale</option>
               </select>
-            </div>
 
-            <button type="submit" className="btn btn-primary btn-full">Sell</button>
-          </form>
-          <p>Balance: KES {customers.find((c) => c.id === customer)?.balance || 0}</p>
-        </div>
+              <button>Sell</button>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );

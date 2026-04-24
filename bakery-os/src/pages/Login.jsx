@@ -1,24 +1,26 @@
+
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
 
-export default function Login( {setUser} ) {
+export default function Login() { // Removed setUser prop
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   async function handleLogin(e) {
     e.preventDefault();
+    setIsLoggingIn(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
       alert(error.message);
-      return;
+      setIsLoggingIn(false); // Only stop loading if it failed
     }
-    setUser(data.user);
-    // alert(JSON.stringify(data.user));
+    // If successful, onAuthStateChange in App.js will take over!
   }
 
   return (
