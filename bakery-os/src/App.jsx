@@ -12,7 +12,6 @@ function App() {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Use useCallback so we can use this inside useEffect safely
   const fetchRole = useCallback(async (userId) => {
     const { data, error } = await supabase
       .from("users")
@@ -29,79 +28,69 @@ function App() {
   }, []);
 
   useEffect(() => {
-  let mounted = true;
+    let mounted = true;
 
-  async function checkUser() {
-    try {
-      // 1. Parse any auth tokens from the URL, then get the current session
-      const { data: { session: urlSession }, error: urlError } =
-        await supabase.auth.getSessionFromUrl();
+    async function checkUser() {
+      try {
+        // 🔹 FIX: Supabase handles URL tokens automatically. 
+        // Just call getSession() to get the current user/session.
+        const { data: { session }, error } = await supabase.auth.getSession();
 
-      if (urlError) {
-        console.error("Auth URL parse error:", urlError);
+        if (error) throw error;
+
+        if (session && mounted) {
+          setUser(session.user);
+          await fetchRole(session.user.id);
+        }
+      } catch (err) {
+        console.error("Auth init error", err);
+      } finally {
+        if (mounted) setLoading(false);
       }
+    }
 
-      const { data: { session } } = urlSession
-        ? { data: { session: urlSession } }
-        : await supabase.auth.getSession();
+    checkUser();
 
-      if (session && mounted) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session) {
         setUser(session.user);
-        // 2. WAIT for the role to finish fetching before we do anything else
         await fetchRole(session.user.id);
+      } else {
+        setUser(null);
+        setRole(null);
       }
-    } catch (err) {
-      console.error("Auth init error", err);
-    } finally {
-      // 3. ONLY stop loading once we've tried to get the session AND role
       if (mounted) setLoading(false);
-    }
-  }
+    });
 
-  checkUser();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [fetchRole]);
 
-  // Listener for LIVE changes (Login/Logout/Token Refresh)
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-    if (session) {
-      setUser(session.user);
-      await fetchRole(session.user.id);
-    } else {
-      setUser(null);
-      setRole(null);
-    }
-    if (mounted) setLoading(false);
-  });
-
-  return () => {
-    mounted = false;
-    subscription.unsubscribe();
-  };
-}, [fetchRole]);
-
-
-
-  // Priority 1: App is still checking storage
   if (loading) {
-    return <div style={{ background: 'black', height: '100vh', color: 'white' }}>Initializing...</div>;
+    return <div style={{ background: 'black', height: '100vh', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Initializing...</div>;
   }
 
-  // Priority 2: No user logged in
   if (!user) {
-    return <Login />; // Removed setUser prop, let onAuthStateChange handle it
+    return <Login />;
   }
 
-  // Priority 3: User exists but role is still fetching
   if (role === null) {
-    return <div style={{ background: 'black', height: '100vh', color: 'white' }}>Loading User Permissions...</div>;
+    return <div style={{ background: 'black', height: '100vh', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading User Permissions...</div>;
   }
 
-  // Priority 4: Role-based Routing
+  // Role-based Routing
   if (role === "worker") return <Production />;
   if (role === "sales") return <Sales />;
   if (role === "delivery") return <Transport />;
   if (role === "admin") return <Admin />;
 
-  return <div style={{ color: 'white' }}>Error: Role "{role}" not recognized.</div>;
+  return (
+    <div style={{ background: 'black', height: '100vh', color: 'white', padding: '20px' }}>
+      Error: Role "{role}" not recognized. Contact Admin.
+    </div>
+  );
 }
 
 export default App;
