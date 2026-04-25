@@ -97,10 +97,10 @@ export default function Production() {
     <div className="container">
       <div className="section-header">
         <div className="section-title">
-          <LogoutButton />
           <span>Department</span>
           Production
         </div>
+        <LogoutButton />
       </div>
 
       <div className="card">

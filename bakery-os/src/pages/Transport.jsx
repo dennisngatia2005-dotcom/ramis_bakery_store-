@@ -87,8 +87,12 @@ export default function Transport() {
 
   return (
     <div className="container">
-      <div className="section-title">
-        <LogoutButton /> Transport
+      <div className="section-header">
+        <div className="section-title">
+          <span>Department</span>
+          Transport
+        </div>
+        <LogoutButton />
       </div>
 
       <div className="card">
@@ -97,9 +101,9 @@ export default function Transport() {
             <h3>Collect Crates</h3>
 
             <form onSubmit={handleCollect}>
-              <select className="input" onChange={(e)=>setProduct(e.target.value)}>
+              <select className="input" onChange={(e) => setProduct(e.target.value)}>
                 <option>Select Product</option>
-                {products.map(p=>(
+                {products.map(p => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
@@ -109,7 +113,7 @@ export default function Transport() {
                 type="number"
                 placeholder="Crates"
                 value={crates}
-                onChange={(e)=>setCrates(e.target.value)}
+                onChange={(e) => setCrates(e.target.value)}
               />
 
               <button className="btn btn-primary btn-full">
@@ -141,7 +145,7 @@ export default function Transport() {
               type="number"
               placeholder="Empty Crates"
               value={returnCrates}
-              onChange={(e)=>setReturnCrates(e.target.value)}
+              onChange={(e) => setReturnCrates(e.target.value)}
             />
             <button className="btn btn-secondary btn-full">
               Confirm Return

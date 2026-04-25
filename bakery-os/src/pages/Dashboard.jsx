@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import LogoutButton from "../components/LogoutButton";
 
 export default function Dashboard() {
   const [inventory, setInventory] = useState([]);
@@ -89,6 +90,7 @@ export default function Dashboard() {
           <span>Department</span>
           Dashboard
         </div>
+        <LogoutButton />
       </div>
 
       <div className="grid-3">
