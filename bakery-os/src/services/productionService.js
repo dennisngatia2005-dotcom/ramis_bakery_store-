@@ -34,23 +34,10 @@ export async function logProduction({
 
     // 🔹 3. Calculations
     const basins = mixes_made * product.basins_per_mix;
-
     const totalCakes = Math.floor(basins * cratesPerBasin * cakesPerCrate);
-
     const crates = Math.floor(totalCakes / cakesPerCrate);
     const remainderCakes = totalCakes % cakesPerCrate;
-
     const flourUsed = mixes_made * product.sacks_per_mix;
-
-    console.log({
-      mixes_made,
-      basins,
-      totalCakes,
-      crates,
-      remainderCakes,
-      flourUsed,
-      shift,
-    });
 
     // 🔹 4. Insert production log
     const { error: insertError } = await supabase
@@ -58,7 +45,7 @@ export async function logProduction({
       .insert([
         {
           product_id,
-          user_id,
+          user_id, // This will now receive the valid ID from the UI
           mixes_made,
           cakes_produced: totalCakes,
           crates_produced: crates,
@@ -95,10 +82,8 @@ export async function logProduction({
       await supabase
         .from("inventory")
         .update({
-          quantity_cakes:
-            existing[0].quantity_cakes + totalCakes,
-          quantity_crates:
-            existing[0].quantity_crates + crates,
+          quantity_cakes: existing[0].quantity_cakes + totalCakes,
+          quantity_crates: existing[0].quantity_crates + crates,
         })
         .eq("id", existing[0].id);
     } else {
