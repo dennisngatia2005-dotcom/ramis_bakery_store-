@@ -33,9 +33,18 @@ function App() {
 
   async function checkUser() {
     try {
-      // 1. Get the current session immediately
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      // 1. Parse any auth tokens from the URL, then get the current session
+      const { data: { session: urlSession }, error: urlError } =
+        await supabase.auth.getSessionFromUrl();
+
+      if (urlError) {
+        console.error("Auth URL parse error:", urlError);
+      }
+
+      const { data: { session } } = urlSession
+        ? { data: { session: urlSession } }
+        : await supabase.auth.getSession();
+
       if (session && mounted) {
         setUser(session.user);
         // 2. WAIT for the role to finish fetching before we do anything else

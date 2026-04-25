@@ -10,8 +10,7 @@ const noOpLock = async (name, acquireTimeout, fn) => {
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    storage : window.localStorage,
-    lock: noOpLock, // 🚀 This bypasses the stuck lock issue
+    storage: window.localStorage,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true
