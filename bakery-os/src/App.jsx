@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 
 import Login from "./pages/Login";
@@ -12,85 +12,79 @@ function App() {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchRole = useCallback(async (userId) => {
+  // 🔥 central role fetch (IMPORTANT)
+  async function fetchRole(userId) {
     const { data, error } = await supabase
       .from("users")
       .select("role")
       .eq("id", userId)
       .maybeSingle();
 
-    if (error || !data) {
-      console.error("Role error:", error || "User not in table");
-      setRole("unknown");
-    } else {
-      setRole(data.role);
+    if (error) {
+      console.error("Role fetch error:", error);
+      setRole(null);
+      return;
     }
-  }, []);
+
+    if (!data) {
+      console.error("User NOT in users table:", userId);
+
+      // ⚠️ prevent infinite loading
+      setRole("unknown");
+      return;
+    }
+
+    setRole(data.role);
+  }
 
   useEffect(() => {
-    let mounted = true;
+    async function init() {
+      const { data: sessionData } = await supabase.auth.getSession();
 
-    async function checkUser() {
-      try {
-        // 🔹 FIX: Supabase handles URL tokens automatically. 
-        // Just call getSession() to get the current user/session.
-        const { data: { session }, error } = await supabase.auth.getSession();
+      if (sessionData.session) {
+        const user = sessionData.session.user;
+        setUser(user);
 
-        if (error) throw error;
-
-        if (session && mounted) {
-          setUser(session.user);
-          await fetchRole(session.user.id);
-        }
-      } catch (err) {
-        console.error("Auth init error", err);
-      } finally {
-        if (mounted) setLoading(false);
+        await fetchRole(user.id);
       }
+
+      setLoading(false);
     }
 
-    checkUser();
+    init();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
-        setUser(session.user);
-        await fetchRole(session.user.id);
-      } else {
-        setUser(null);
-        setRole(null);
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session) {
+          const user = session.user;
+          setUser(user);
+          await fetchRole(user.id);
+        } else {
+          setUser(null);
+          setRole(null);
+        }
       }
-      if (mounted) setLoading(false);
-    });
+    );
 
     return () => {
-      mounted = false;
-      subscription.unsubscribe();
+      listener.subscription.unsubscribe();
     };
-  }, [fetchRole]);
+  }, []);
 
-  if (loading) {
-    return <div style={{ background: 'black', height: '100vh', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Initializing...</div>;
-  }
+  // 🔥 LOADING STATE (critical)
+  if (loading) return <div>Initializing...</div>;
 
-  if (!user) {
-    return <Login />;
-  }
+  if (!user) return <Login setUser={setUser} />;
 
-  if (role === null) {
-    return <div style={{ background: 'black', height: '100vh', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading User Permissions...</div>;
-  }
+  if (!role) return <div>Loading role...</div>;
 
-  // Role-based Routing
   if (role === "worker") return <Production />;
   if (role === "sales") return <Sales />;
   if (role === "delivery") return <Transport />;
   if (role === "admin") return <Admin />;
 
-  return (
-    <div style={{ background: 'black', height: '100vh', color: 'white', padding: '20px' }}>
-      Error: Role "{role}" not recognized. Contact Admin.
-    </div>
-  );
+  // 🔥 fallback (prevents infinite loop)
+  return <div>User role not configured</div>;
 }
 
 export default App;
