@@ -140,9 +140,6 @@ export default function Transport() {
         {delivery?.status === "arrived" && (
           <>
             <p>Delivery must be confirmed as by the sales person</p>
-            <button className="btn btn-primary btn-full" onClick={handleArrive}>
-              Arrived
-            </button>
           </>
         )}
         {delivery?.status === "at_market" && (
