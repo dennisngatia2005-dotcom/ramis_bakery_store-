@@ -11,85 +11,127 @@ function getShift() {
 export default function Production() {
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState("");
+
   const [mixes, setMixes] = useState(0);
+  const [manualCakes, setManualCakes] = useState(0);
+
   const [note, setNote] = useState("");
   const [history, setHistory] = useState([]);
+
   const [loading, setLoading] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   // 🔹 Load products
   useEffect(() => {
     async function fetchProducts() {
-      const { data } = await supabase.from("products").select("*");
-      setProducts(data || []);
+      try {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*");
+
+        if (error) throw error;
+        setProducts(data || []);
+      } catch (err) {
+        console.error("Products load error:", err);
+      }
     }
+
     fetchProducts();
   }, []);
 
   // 🔹 Load today's history
   async function loadHistory() {
-    const today = new Date().toISOString().split("T")[0];
-    
-    // Get fresh user session
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const today = new Date().toISOString().split("T")[0];
 
-    const { data } = await supabase
-      .from("production_logs")
-      .select("*")
-      .eq("user_id", user.id) // Fixed: Using user.id from session
-      .gte("created_at", today)
-      .order("created_at", { ascending: false });
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    setHistory(data || []);
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("production_logs")
+        .select(`
+          *,
+          products(name)
+        `)
+        .eq("user_id", user.id)
+        .gte("created_at", today)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setHistory(data || []);
+    } catch (err) {
+      console.error("History load error:", err);
+    }
   }
 
   useEffect(() => {
     loadHistory();
   }, []);
 
+  // 🔹 PREVIEW CALCULATION
   const product = products.find((p) => p.id === selectedProduct);
+
   let preview = null;
 
   if (product && mixes > 0) {
-    const basins = mixes * (product.basins_per_mix || 0);
-    const totalCakes = Math.floor(basins * 3 * 40);
-    const crates = Math.floor(totalCakes / 40);
-    const remainder = totalCakes % 40;
-    preview = { crates, remainder, totalCakes };
+    if (product.basins_per_mix) {
+      const basins = mixes * product.basins_per_mix;
+      const totalCakes = Math.floor(basins * 3 * 40);
+      const crates = Math.floor(totalCakes / 40);
+      const remainder = totalCakes % 40;
+
+      preview = { crates, remainder, totalCakes };
+    }
   }
 
+  if (!product?.basins_per_mix && manualCakes > 0) {
+    const crates = Math.floor(manualCakes / 40);
+    const remainder = manualCakes % 40;
+
+    preview = { crates, remainder, totalCakes: manualCakes };
+  }
+
+  // 🔹 SUBMIT
   async function handleSubmit(e) {
     e.preventDefault();
-
-    if (!selectedProduct || mixes <= 0) {
-      alert("Enter valid data");
-      return;
-    }
 
     try {
       setLoading(true);
 
-      // 🔹 Get fresh user session at moment of submission
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error("User session not found. Please log in again.");
+      if (!selectedProduct) {
+        alert("Select product");
+        return;
       }
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) throw new Error("Not logged in");
 
       await logProduction({
         product_id: selectedProduct,
-        user_id: user.id, // Fixed: Passing authenticated ID
+        user_id: user.id,
         mixes_made: mixes,
+        manual_cakes: manualCakes,
         note,
         shift: getShift(),
       });
 
-      alert("Production logged");
+      // reset
       setMixes(0);
+      setManualCakes(0);
       setNote("");
       setSelectedProduct("");
-      loadHistory();
+
+      await loadHistory();
+
     } catch (err) {
+      console.error("Submit error:", err);
       alert(err.message);
     } finally {
       setLoading(false);
@@ -106,8 +148,11 @@ export default function Production() {
         <LogoutButton />
       </div>
 
+      {/* ================= FORM ================= */}
       <div className="card">
         <form onSubmit={handleSubmit}>
+
+          {/* PRODUCT */}
           <div className="form-group">
             <label>Product</label>
             <select
@@ -124,16 +169,30 @@ export default function Production() {
             </select>
           </div>
 
-          <div className="form-group">
-            <label>Mixes</label>
-            <input
-              className="input"
-              type="number"
-              value={mixes}
-              onChange={(e) => setMixes(Number(e.target.value))}
-            />
-          </div>
+          {/* MIXES OR MANUAL */}
+          {product?.basins_per_mix ? (
+            <div className="form-group">
+              <label>Mixes Made</label>
+              <input
+                className="input"
+                type="number"
+                value={mixes}
+                onChange={(e) => setMixes(Number(e.target.value))}
+              />
+            </div>
+          ) : (
+            <div className="form-group">
+              <label>Total Cakes Produced</label>
+              <input
+                className="input"
+                type="number"
+                value={manualCakes}
+                onChange={(e) => setManualCakes(Number(e.target.value))}
+              />
+            </div>
+          )}
 
+          {/* NOTE */}
           <div className="form-group">
             <label>Note</label>
             <input
@@ -144,34 +203,71 @@ export default function Production() {
             />
           </div>
 
+          {/* PREVIEW */}
           {preview && (
             <div className="card" style={{ marginTop: "10px" }}>
-              <p>Full Crates: {preview.crates}</p>
-              {preview.remainder > 0 && <p>Partial Crate: {preview.remainder} cakes</p>}
-              <p>Total Cakes: {preview.totalCakes}</p>
+              <div className="card-title">Preview</div>
+              <p>📦 Full Crates: <strong>{preview.crates}</strong></p>
+              {preview.remainder > 0 && (
+                <p>🍰 Partial: {preview.remainder} cakes</p>
+              )}
+              <p>🎂 Total Cakes: {preview.totalCakes}</p>
             </div>
           )}
 
-          <button className="btn btn-primary btn-full" disabled={loading}>
-            {loading ? "Submitting..." : "Submit"}
+          {/* BUTTON */}
+          <button
+            className="btn btn-primary btn-full"
+            disabled={loading}
+          >
+            {loading ? "Logging Production..." : "Submit"}
           </button>
         </form>
       </div>
 
-      <div className="card" style={{ marginTop: "20px" }}>
-        <div className="card-title">Today’s Work</div>
-        {history.length === 0 && <p>No logs yet</p>}
-        {history.map((h) => (
-          <div key={h.id} style={{ marginBottom: "10px" }}>
-            <p><strong>{h.mixes_made} mixes</strong></p>
-            <p>{h.crates_produced} crates</p>
-            {h.remainder_cakes > 0 && <p>{h.remainder_cakes} extra cakes</p>}
-            {h.note && <p>Note: {h.note}</p>}
-            <small>{new Date(h.created_at).toLocaleTimeString()}</small>
-            <hr />
-          </div>
-        ))}
+      {/* ================= HISTORY TOGGLE ================= */}
+      <div style={{ marginTop: "20px" }}>
+        <button
+          className="btn btn-secondary btn-full"
+          onClick={() => setShowHistory(!showHistory)}
+        >
+          {showHistory ? "Hide Today’s Work" : "View Today’s Work"}
+        </button>
       </div>
+
+      {/* ================= HISTORY ================= */}
+      {showHistory && (
+        <div className="card" style={{ marginTop: "15px" }}>
+          <div className="card-title">Today’s Production</div>
+
+          {history.length === 0 && <p>No logs yet</p>}
+
+          {history.map((h) => (
+            <div key={h.id} style={{ marginBottom: "12px" }}>
+              <p>
+                <strong>{h.products?.name}</strong>
+              </p>
+
+              <p>
+                {h.mixes_made > 0 && `${h.mixes_made} mixes • `}
+                {h.crates_produced} crates • {h.cakes_produced} {h.products?.name}
+              </p>
+
+              {h.remainder_cakes > 0 && (
+                <p>Extra: {h.remainder_cakes} cakes</p>
+              )}
+
+              {h.note && <p>📝 {h.note}</p>}
+
+              <small>
+                {new Date(h.created_at).toLocaleTimeString()}
+              </small>
+
+              <div className="divider"></div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

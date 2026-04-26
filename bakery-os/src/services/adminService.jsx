@@ -1,85 +1,66 @@
 import { supabase } from "../supabaseClient";
 
-/* =========================
-   SALES SUMMARY
-========================= */
-export async function getSalesSummary() {
-  const today = new Date().toISOString().split("T")[0];
-
+/* ================= SALES ================= */
+export async function getSalesData() {
   const { data: sales } = await supabase
     .from("sales")
+    .select(`
+      *,
+      customers(name),
+      products(name),
+      users(name)
+    `)
+    .order("created_at", { ascending: false });
+
+  const { data: payments } = await supabase
+    .from("payments")
     .select("*");
 
-  let todayRevenue = 0;
-  let totalRevenue = 0;
-  let retail = 0;
-  let wholesale = 0;
-
-  sales?.forEach((s) => {
-    totalRevenue += Number(s.total_amount);
-
-    if (s.created_at?.startsWith(today)) {
-      todayRevenue += Number(s.total_amount);
-
-      if (s.sale_type === "retail") retail += Number(s.total_amount);
-      if (s.sale_type === "wholesale") wholesale += Number(s.total_amount);
-    }
-  });
-
-  return { todayRevenue, totalRevenue, retail, wholesale };
+  return {
+    sales: sales || [],
+    payments: payments || []
+  };
 }
 
-/* =========================
-   STOCK OVERVIEW
-========================= */
-export async function getStockOverview() {
-  const { data: inventory } = await supabase
+/* ================= INVENTORY ================= */
+export async function getInventoryData() {
+  const { data } = await supabase
     .from("inventory")
     .select(`
       *,
-      products(name),
+      products(name, retail_price),
       inventory_locations(name)
     `);
-
-  return inventory || [];
-}
-
-/* =========================
-   DELIVERY TRACKING
-========================= */
-export async function getDeliveries() {
-  const { data } = await supabase
-    .from("deliveries")
-    .select("*")
-    .order("departed_at", { ascending: false });
 
   return data || [];
 }
 
-/* =========================
-   STAFF ACTIVITY
-========================= */
-export async function getStaffActivity() {
+/* ================= DELIVERIES ================= */
+export async function getDeliveryData() {
+  const { data } = await supabase
+    .from("deliveries")
+    .select(`*, delivery_items(*, products(name))`)
+    .order("created_at", { ascending: false });
+
+  return data || [];
+}
+
+/* ================= STAFF ================= */
+export async function getStaffData() {
   const { data } = await supabase
     .from("staff_sessions")
-    .select(`
-      *,
-      users(name)
-    `)
+    .select(`*, users(name, role, shift)`)
     .order("login_time", { ascending: false });
 
   return data || [];
 }
 
-/* =========================
-   CRM FEED
-========================= */
-export async function getSalesFeed() {
+/* ================= PRODUCTION ================= */
+export async function getProductionData() {
   const { data } = await supabase
-    .from("sales")
+    .from("production_logs")
     .select(`
       *,
-      customers(name),
       products(name),
       users(name)
     `)

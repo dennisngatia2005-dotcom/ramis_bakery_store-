@@ -6,9 +6,10 @@ const supabaseKey = 'sb_publishable_N2xzFMnQRUZN14_qXVo_kw_N0VcWU-I';
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    storage: window.localStorage,
+    storage: window.sessionStorage, // Changed from localStorage
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true
   }
 });
+
