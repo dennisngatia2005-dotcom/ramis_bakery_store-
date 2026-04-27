@@ -1,20 +1,15 @@
 import { supabase } from "../supabaseClient";
 
-// =========================
-// 🔹 HELPERS
-// =========================
+/* =========================
+   🔹 HELPERS
+========================= */
 async function getLocation(name) {
   const { data, error } = await supabase
     .from("inventory_locations")
     .select("*")
     .eq("name", name)
     .single();
-
-  if (error) {
-    console.error("Location error:", error);
-    throw error;
-  }
-
+  if (error) throw error;
   return data;
 }
 
@@ -28,228 +23,169 @@ async function getOrCreateInventory(product_id, location_id) {
 
   if (data) return data;
 
+  // Create row with 0s to avoid NULL math issues
   const { data: newRow, error } = await supabase
     .from("inventory")
-    .insert([{ product_id, location_id }])
-    .select()
-    .single();
+    .insert([{ 
+      product_id, 
+      location_id, 
+      quantity_crates: 0, 
+      quantity_cakes: 0 
+    }])
+    .select().single();
 
   if (error) throw error;
-
   return newRow;
 }
 
-// =========================
-// 🔹 STEP 1 — CREATE DELIVERY
-// =========================
+/* =========================
+   🔹 STEP 1 — CREATE DELIVERY
+========================= */
 export async function createDelivery(items) {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("User not authenticated");
+    if (!user) throw new Error("Not authenticated");
 
     const store = await getLocation("store");
     const transit = await getLocation("transit");
 
-    // Create delivery
-    const { data: delivery, error } = await supabase
+    // Create delivery header
+    const { data: delivery, error: dErr } = await supabase
       .from("deliveries")
       .insert([{ delivery_user_id: user.id, status: "collected" }])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Process each product
-    for (const item of items) {
-      const { product_id, crates } = item;
-
-      const storeInv = await getOrCreateInventory(product_id, store.id);
-      const transitInv = await getOrCreateInventory(product_id, transit.id);
-
-      if (storeInv.quantity_crates < crates) {
-        throw new Error("Not enough crates in store");
-      }
-
-      // Move store → transit
-      await supabase.from("inventory").update({
-        quantity_crates: storeInv.quantity_crates - crates,
-      }).eq("id", storeInv.id);
-
-      await supabase.from("inventory").update({
-        quantity_crates: transitInv.quantity_crates + crates,
-      }).eq("id", transitInv.id);
-
-      // Insert delivery item
-      await supabase.from("delivery_items").insert([
-        {
-          delivery_id: delivery.id,
-          product_id,
-          crates_sent: crates,
-        },
-      ]);
-    }
-
-    return delivery;
-
-  } catch (err) {
-    console.error("CREATE DELIVERY ERROR:", err);
-    throw err;
-  }
-}
-
-// =========================
-// 🔹 STEP 2 — START DELIVERY
-// =========================
-export async function startDelivery(delivery_id) {
-  try {
-    const { error } = await supabase
-      .from("deliveries")
-      .update({
-        status: "in_transit",
-        departed_at: new Date().toISOString(),
-      })
-      .eq("id", delivery_id);
-
-    if (error) throw error;
-
-  } catch (err) {
-    console.error("START DELIVERY ERROR:", err);
-    throw err;
-  }
-}
-
-// =========================
-// 🔹 STEP 3 — ARRIVE
-// =========================
-export async function arriveDelivery(delivery_id) {
-  try {
-    const transit = await getLocation("transit");
-    const market = await getLocation("market");
-
-    const { data: items, error } = await supabase
-      .from("delivery_items")
-      .select("*")
-      .eq("delivery_id", delivery_id);
-
-    if (error) throw error;
+      .select().single();
+    if (dErr) throw dErr;
 
     for (const item of items) {
+      // Get formula
+      const { data: product } = await supabase
+        .from("products")
+        .select("cakes_per_crate")
+        .eq("id", item.product_id)
+        .single();
+
+      const multiplier = product?.cakes_per_crate || 0;
+      const cratesToMove = Number(item.crates);
+      const cakesToMove = cratesToMove * multiplier;
+
+      const storeInv = await getOrCreateInventory(item.product_id, store.id);
       const transitInv = await getOrCreateInventory(item.product_id, transit.id);
-      const marketInv = await getOrCreateInventory(item.product_id, market.id);
 
-      // Move transit → market
-      await supabase.from("inventory").update({
-        quantity_crates: transitInv.quantity_crates - item.crates_sent,
-      }).eq("id", transitInv.id);
-
-      await supabase.from("inventory").update({
-        quantity_crates: marketInv.quantity_crates + item.crates_sent,
-      }).eq("id", marketInv.id);
-    }
-
-    await supabase.from("deliveries").update({
-      status: "awaiting_sales_confirmation",
-      arrived_at: new Date().toISOString(),
-    }).eq("id", delivery_id);
-
-  } catch (err) {
-    console.error("ARRIVE ERROR:", err);
-    throw err;
-  }
-}
-
-// =========================
-// 🔹 STEP 4 — SALES CONFIRM
-// =========================
-export async function confirmBySales(delivery_id, confirmations) {
-  try {
-    for (const c of confirmations) {
-      await supabase
-        .from("delivery_items")
-        .update({
-          crates_received: c.received,
-          broken_cakes: c.broken,
-        })
-        .eq("id", c.item_id);
-
-      if (c.received !== c.sent) {
-        console.warn("🚨 CRATE MISMATCH DETECTED");
-      }
-    }
-
-    await supabase.from("deliveries").update({
-      status: "at_market",
-      sales_confirmed: true,
-    }).eq("id", delivery_id);
-
-  } catch (err) {
-    console.error("SALES CONFIRM ERROR:", err);
-    throw err;
-  }
-}
-
-// =========================
-// 🔹 STEP 5 — RETURN
-// =========================
-export async function confirmReturn(delivery_id, returns) {
-  try {
-    const market = await getLocation("market");
-    const store = await getLocation("store");
-
-    for (const r of returns) {
-      const marketInv = await getOrCreateInventory(r.product_id, market.id);
-      const storeInv = await getOrCreateInventory(r.product_id, store.id);
-
-      if (marketInv.quantity_crates < r.returned) {
-        throw new Error("Return exceeds market stock");
-      }
-
-      // Move market → store
-      await supabase.from("inventory").update({
-        quantity_crates: marketInv.quantity_crates - r.returned,
-      }).eq("id", marketInv.id);
-
-      await supabase.from("inventory").update({
-        quantity_crates: storeInv.quantity_crates + r.returned,
+      // Perform Update - Store (Subtract)
+      const { error: storeErr } = await supabase.from("inventory").update({
+        quantity_crates: (storeInv.quantity_crates || 0) - cratesToMove,
+        quantity_cakes: (storeInv.quantity_cakes || 0) - cakesToMove,
+        updated_at: new Date()
       }).eq("id", storeInv.id);
+      if (storeErr) throw storeErr;
 
-      await supabase.from("delivery_items")
-        .update({
-          crates_returned: r.returned,
-          crates_with_cakes: r.with_cakes,
-        })
-        .eq("id", r.item_id);
+      // Perform Update - Transit (Add)
+      const { error: transitErr } = await supabase.from("inventory").update({
+        quantity_crates: (transitInv.quantity_crates || 0) + cratesToMove,
+        quantity_cakes: (transitInv.quantity_cakes || 0) + cakesToMove,
+        updated_at: new Date()
+      }).eq("id", transitInv.id);
+      if (transitErr) throw transitErr;
 
-      if (r.returned < r.with_cakes) {
-        console.warn("🚨 Suspicious: more crates with cakes than returned");
-      }
+      // Record in delivery_items
+      await supabase.from("delivery_items").insert([{
+        delivery_id: delivery.id,
+        product_id: item.product_id,
+        crates_sent: cratesToMove
+      }]);
     }
-
-    await supabase.from("deliveries").update({
-      status: "completed",
-      return_confirmed: true,
-    }).eq("id", delivery_id);
-
+    return delivery;
   } catch (err) {
-    console.error("RETURN ERROR:", err);
+    console.error("CREATE DELIVERY ERROR:", err.message);
     throw err;
   }
 }
 
-// =========================
-// 🔹 GET ACTIVE
-// =========================
+/* =========================
+   🔹 STEP 2 & 3 — START & ARRIVE
+========================= */
+export async function startDelivery(delivery_id) {
+  const { error } = await supabase.from("deliveries")
+    .update({ status: "in_transit", departed_at: new Date().toISOString() })
+    .eq("id", delivery_id);
+  if (error) throw error;
+}
+
+export async function arriveDelivery(delivery_id) {
+  const transit = await getLocation("transit");
+  const market = await getLocation("market");
+
+  const { data: items } = await supabase
+    .from("delivery_items")
+    .select("*, products(cakes_per_crate)")
+    .eq("delivery_id", delivery_id);
+
+  for (const item of items) {
+    const multiplier = item.products?.cakes_per_crate || 0;
+    const cratesToMove = Number(item.crates_sent);
+    const cakesToMove = cratesToMove * multiplier;
+
+    const transitInv = await getOrCreateInventory(item.product_id, transit.id);
+    const marketInv = await getOrCreateInventory(item.product_id, market.id);
+
+    // Transit -> Market
+    await supabase.from("inventory").update({
+      quantity_crates: (transitInv.quantity_crates || 0) - cratesToMove,
+      quantity_cakes: (transitInv.quantity_cakes || 0) - cakesToMove
+    }).eq("id", transitInv.id);
+
+    await supabase.from("inventory").update({
+      quantity_crates: (marketInv.quantity_crates || 0) + cratesToMove,
+      quantity_cakes: (marketInv.quantity_cakes || 0) + cakesToMove
+    }).eq("id", marketInv.id);
+  }
+
+  await supabase.from("deliveries").update({
+    status: "awaiting_sales_confirmation",
+    arrived_at: new Date().toISOString()
+  }).eq("id", delivery_id);
+}
+
+/* =========================
+   🔹 STEP 5 — RETURN
+========================= */
+export async function confirmReturn(delivery_id, returns) {
+  const market = await getLocation("market");
+  const store = await getLocation("store");
+
+  for (const r of returns) {
+    const { data: product } = await supabase.from("products").select("cakes_per_crate").eq("id", r.product_id).single();
+    const multiplier = product?.cakes_per_crate || 0;
+    const cratesReturning = Number(r.returned);
+    const cakesReturning = cratesReturning * multiplier;
+
+    const marketInv = await getOrCreateInventory(r.product_id, market.id);
+    const storeInv = await getOrCreateInventory(r.product_id, store.id);
+
+    // Market -> Store
+    await supabase.from("inventory").update({
+      quantity_crates: (marketInv.quantity_crates || 0) - cratesReturning,
+      quantity_cakes: (marketInv.quantity_cakes || 0) - cakesReturning
+    }).eq("id", marketInv.id);
+
+    await supabase.from("inventory").update({
+      quantity_crates: (storeInv.quantity_crates || 0) + cratesReturning,
+      quantity_cakes: (storeInv.quantity_cakes || 0) + cakesReturning
+    }).eq("id", storeInv.id);
+
+    await supabase.from("delivery_items").update({
+      crates_returned: cratesReturning,
+      crates_with_cakes: Number(r.with_cakes)
+    }).eq("id", r.item_id);
+  }
+
+  await supabase.from("deliveries").update({ status: "completed", return_confirmed: true }).eq("id", delivery_id);
+}
+
 export async function getActiveDeliveries() {
-  const { data, error } = await supabase
-    .from("deliveries")
-    .select("*")
+  const { data } = await supabase.from("deliveries")
+    .select("*, delivery_items(*, products(name))")
     .neq("status", "completed")
     .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("FETCH DELIVERY ERROR:", error);
-    throw error;
-  }
-
   return data || [];
 }
