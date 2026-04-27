@@ -46,9 +46,11 @@ export async function logProduction({
 
     } else {
       // 🔥 MANUAL ENTRY (cookies)
-      crates = Number(manual_crates);
+      const cakesPerCrate = product.cakes_per_crate || 20;
+
       totalCakes = Number(manual_cakes);
-      remainderCakes = 0;
+      crates = Math.floor(totalCakes / cakesPerCrate);
+      remainderCakes = totalCakes % cakesPerCrate;
     }
 
     // 🔹 3. FLOUR (KG → sacks)
